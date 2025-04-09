@@ -106,7 +106,9 @@ fn handle_sync_exception(tf: &mut TrapFrame, source: TrapSource) {
     match esr.read_as_enum(ESR_EL1::EC) {
         #[cfg(feature = "uspace")]
         Some(ESR_EL1::EC::Value::SVC64) => {
-            tf.r[0] = crate::trap::handle_syscall(tf, tf.r[8] as usize) as u64;
+            if let Some(ret) = crate::trap::handle_syscall(tf, tf.r[8] as usize) {
+                tf.r[0] = ret as u64;
+            }
         }
         Some(ESR_EL1::EC::Value::InstrAbortLowerEL) => handle_instruction_abort(tf, iss, true),
         Some(ESR_EL1::EC::Value::InstrAbortCurrentEL) => handle_instruction_abort(tf, iss, false),

@@ -19,7 +19,7 @@ pub static PAGE_FAULT: [fn(VirtAddr, MappingFlags, bool) -> bool];
 /// A slice of syscall handler functions.
 #[cfg(feature = "uspace")]
 #[def_trap_handler]
-pub static SYSCALL: [fn(&mut TrapFrame, usize) -> isize];
+pub static SYSCALL: [fn(&mut TrapFrame, usize) -> Option<isize>];
 
 /// A slice of callbacks to be invoked after a trap.
 #[linkme::distributed_slice]
@@ -50,6 +50,6 @@ pub(crate) fn post_trap_callback(tf: &mut TrapFrame, from_user: bool) {
 
 /// Call the external syscall handler.
 #[cfg(feature = "uspace")]
-pub(crate) fn handle_syscall(tf: &mut TrapFrame, syscall_num: usize) -> isize {
+pub(crate) fn handle_syscall(tf: &mut TrapFrame, syscall_num: usize) -> Option<isize> {
     SYSCALL[0](tf, syscall_num)
 }

@@ -16,7 +16,9 @@ core::arch::global_asm!(
 
 #[unsafe(no_mangle)]
 pub(super) fn x86_syscall_handler(tf: &mut TrapFrame) {
-    tf.rax = crate::trap::handle_syscall(tf, tf.rax as usize) as u64;
+    if let Some(ret) = crate::trap::handle_syscall(tf, tf.rax as usize) {
+        tf.rax = ret as u64;
+    }
 }
 
 /// Initializes syscall support and setups the syscall handler.
