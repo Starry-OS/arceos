@@ -5,7 +5,7 @@ mod trap;
 
 use core::arch::asm;
 
-use aarch64_cpu::registers::{DAIF, TPIDR_EL0, TTBR0_EL1, TTBR1_EL1, VBAR_EL1};
+use aarch64_cpu::registers::{DAIF, TPIDRRO_EL0, TTBR0_EL1, TTBR1_EL1, VBAR_EL1};
 use memory_addr::{PhysAddr, VirtAddr};
 use tock_registers::interfaces::{Readable, Writeable};
 
@@ -125,7 +125,7 @@ pub fn flush_dcache_line(vaddr: VirtAddr) {
 /// It is used to implement TLS (Thread Local Storage).
 #[inline]
 pub fn read_thread_pointer() -> usize {
-    TPIDR_EL0.get() as usize
+    TPIDRRO_EL0.get() as usize
 }
 
 /// Writes the thread pointer of the current CPU.
@@ -136,8 +136,8 @@ pub fn read_thread_pointer() -> usize {
 ///
 /// This function is unsafe as it changes the CPU states.
 #[inline]
-pub unsafe fn write_thread_pointer(tpidr_el0: usize) {
-    TPIDR_EL0.set(tpidr_el0 as _)
+pub unsafe fn write_thread_pointer(tpidrro_el0: usize) {
+    TPIDRRO_EL0.set(tpidrro_el0 as _)
 }
 
 /// Initializes CPU states on the current CPU.

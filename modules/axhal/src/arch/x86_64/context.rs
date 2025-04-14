@@ -140,6 +140,17 @@ impl TrapFrame {
             core::ptr::write(self.rsp as *mut usize, addr);
         }
     }
+
+    /// Gets the TLS area.
+    pub fn tls(&self) -> usize {
+        // self.fs_base as _
+        todo!()
+    }
+
+    /// Sets the TLS area.
+    pub fn set_tls(&mut self, tls_area: usize) {
+        // self.fs_base = tls_area as _;
+    }
 }
 
 /// Context to enter user space.
@@ -388,16 +399,6 @@ impl TaskContext {
         self.fs_base = tls_area.as_usize();
     }
 
-    /// Gets the TLS area.
-    pub fn tls(&self) -> VirtAddr {
-        VirtAddr::from(self.fs_base)
-    }
-
-    /// Sets the TLS area.
-    pub fn set_tls(&mut self, tls_area: VirtAddr) {
-        self.fs_base = tls_area.as_usize();
-    }
-
     /// Changes the page table root (`CR3` register for x86_64).
     ///
     /// If not set, the kernel page table root is used (obtained by
@@ -419,7 +420,7 @@ impl TaskContext {
             self.ext_state.save();
             next_ctx.ext_state.restore();
         }
-        #[cfg(any(feature = "tls", feature = "uspace"))]
+        #[cfg(any(feature = "tls"))]
         unsafe {
             self.fs_base = super::read_thread_pointer();
             super::write_thread_pointer(next_ctx.fs_base);
