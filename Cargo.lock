@@ -808,11 +808,10 @@ dependencies = [
 
 [[package]]
 name = "axsched"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44de469da35f912194e4104cc2f51bff63d6c184b65b6ebf8e90e2cd162b7f3c"
+version = "0.3.1"
+source = "git+https://github.com/Starry-OS/axsched.git?rev=2076c9b#2076c9b4483a21a4f1b715ba21138085ae88e2c2"
 dependencies = [
- "linked_list_r4l",
+ "intrusive-collections",
 ]
 
 [[package]]
@@ -1399,6 +1398,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6045ea39e8d2862506c0dff6c65d068da362335df698bb1634033492740d2170"
 
 [[package]]
+name = "intrusive-collections"
+version = "0.9.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "189d0897e4cbe8c75efedf3502c18c887b05046e59d28404d4d8e46cbc4d1e86"
+dependencies = [
+ "memoffset",
+]
+
+[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1487,12 +1495,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "linked_list_r4l"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54c6e48d7df84e6414be8e53976ead35ba4d47a4ba561eaad5d1e2b1447b4c0a"
-
-[[package]]
 name = "linkme"
 version = "0.3.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1549,6 +1551,15 @@ name = "memchr"
 version = "2.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a282da65faaf38286cf3be983213fcf1d2e2a58700e808f83f4ea9a4804bc0"
+
+[[package]]
+name = "memoffset"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
+dependencies = [
+ "autocfg",
+]
 
 [[package]]
 name = "memory_addr"
