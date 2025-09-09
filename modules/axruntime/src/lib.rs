@@ -154,6 +154,9 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
     #[cfg(feature = "paging")]
     axmm::init_memory_management();
 
+    #[cfg(feature = "driver-dyn")]
+    axdriver::setup(arg, iomap);
+
     info!("Initialize platform devices...");
     axhal::init_later(cpu_id, arg);
 
@@ -223,6 +226,8 @@ fn init_allocator() {
         if r.flags.contains(MemRegionFlags::FREE) && r.size > max_region_size {
             max_region_size = r.size;
             max_region_paddr = r.paddr;
+            // use lowest addr region
+            break;
         }
     }
     for r in memory_regions() {
@@ -279,4 +284,20 @@ fn init_tls() {
     let main_tls = axhal::tls::TlsArea::alloc();
     unsafe { axhal::asm::write_thread_pointer(main_tls.tls_ptr() as usize) };
     core::mem::forget(main_tls);
+}
+
+#[cfg(feature = "driver-dyn")]
+fn iomap(addr: axhal::mem::PhysAddr, size: usize) -> axerrno::AxResult<axhal::mem::VirtAddr> {
+    let virt = axhal::mem::phys_to_virt(addr);
+    #[cfg(feature = "paging")]
+    {
+        use axhal::paging::MappingFlags;
+
+        let flags = MappingFlags::DEVICE | MappingFlags::READ | MappingFlags::WRITE;
+        let mut tb = axmm::kernel_aspace().lock();
+        tb.map_linear(virt, addr, size, flags)?;
+        // flush TLB
+        tb.protect(virt, size, flags)?;
+    }
+    Ok(virt)
 }

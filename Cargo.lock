@@ -211,6 +211,7 @@ dependencies = [
  "enum_dispatch",
  "log",
  "paste",
+ "rdif-intc",
  "tock-registers 0.9.0",
 ]
 
@@ -230,6 +231,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13696b1c2b59992f4223e0ae5bb173c81c63039367ca90eee845346ad2a13421"
 dependencies = [
  "chrono",
+]
+
+[[package]]
+name = "as-any"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0f477b951e452a0b6b4a10b53ccd569042d1d01729b519e02074a9c0958a063"
+
+[[package]]
+name = "async-trait"
+version = "0.1.89"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9035ad2d096bed7955a320ee7e2230574d28fd3c3a0f186cbea1ff3c7eed5dbb"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
 ]
 
 [[package]]
@@ -341,6 +359,7 @@ dependencies = [
 name = "axdriver"
 version = "0.2.0"
 dependencies = [
+ "arm-gic-driver",
  "axalloc",
  "axconfig",
  "axdma",
@@ -350,10 +369,14 @@ dependencies = [
  "axdriver_net",
  "axdriver_pci",
  "axdriver_virtio",
+ "axerrno",
  "axhal",
  "cfg-if",
  "crate_interface",
+ "lazyinit",
  "log",
+ "memory_addr",
+ "rdrive",
 ]
 
 [[package]]
@@ -776,6 +799,7 @@ dependencies = [
  "axconfig",
  "axdisplay",
  "axdriver",
+ "axerrno",
  "axfs",
  "axhal",
  "axipi",
@@ -865,26 +889,6 @@ name = "bindgen"
 version = "0.71.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f58bf3d7db68cfbac37cfc485a8d711e87e064c3d0fe0435b92f7a407f9d6b3"
-dependencies = [
- "bitflags 2.9.4",
- "cexpr",
- "clang-sys",
- "itertools",
- "log",
- "prettyplease",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash",
- "shlex",
- "syn 2.0.106",
-]
-
-[[package]]
-name = "bindgen"
-version = "0.72.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
 dependencies = [
  "bitflags 2.9.4",
  "cexpr",
@@ -1222,6 +1226,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fdt-parser"
+version = "0.4.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16ca123a5721e4a28ef60d6e1600cd0a33a9ab376c4b88de04c99bce757e458b"
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1234,6 +1244,67 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f7719d63de27ac93e7cd2c8e0c03083f8b0ff7f842fdb6280b8cdcac21b4baf"
 dependencies = [
  "bitmaps",
+]
+
+[[package]]
+name = "futures"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65bc07b1a8bc7c85c5f2e110c476c7389b4554ba72af57d8445ea63a576b0876"
+dependencies = [
+ "futures-channel",
+ "futures-core",
+ "futures-io",
+ "futures-sink",
+ "futures-task",
+ "futures-util",
+]
+
+[[package]]
+name = "futures-channel"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dff15bf788c671c1934e366d07e30c1814a8ef514e1af724a602e8a2fbe1b10"
+dependencies = [
+ "futures-core",
+ "futures-sink",
+]
+
+[[package]]
+name = "futures-core"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05f29059c0c2090612e8d742178b0580d2dc940c837851ad723096f87af6663e"
+
+[[package]]
+name = "futures-io"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e5c1b78ca4aae1ac06c48a526a655760685149f0d465d21f37abfe57ce075c6"
+
+[[package]]
+name = "futures-sink"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e575fab7d1e0dcb8d0c7bcf9a63ee213816ab51902e6d244a95819acacf1d4f7"
+
+[[package]]
+name = "futures-task"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f90f7dce0722e95104fcb095585910c0977252f286e354b5e3bd38902cd99988"
+
+[[package]]
+name = "futures-util"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9fa08315bb612088cc391249efdc3bc77536f16c91f6cf495e6fbe85b20a4a81"
+dependencies = [
+ "futures-core",
+ "futures-sink",
+ "futures-task",
+ "pin-project-lite",
+ "pin-utils",
 ]
 
 [[package]]
@@ -1658,6 +1729,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "pin-project-lite"
+version = "0.2.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b3cff922bd51709b605d9ead9aa71031d81447142d828eb4a6eba76fe619f9b"
+
+[[package]]
+name = "pin-utils"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1766,6 +1849,121 @@ version = "11.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "498cd0dc59d73224351ee52a95fee0f1a617a2eae0e7d9d720cc622c73a54186"
 dependencies = [
+ "bitflags 2.9.4",
+]
+
+[[package]]
+name = "rdif-base"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6953f438bbbdf58e55513c31e70fa0f85daba2927e8a59130a04608141bb552"
+dependencies = [
+ "as-any",
+ "async-trait",
+ "rdif-def",
+ "thiserror",
+]
+
+[[package]]
+name = "rdif-block"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7b8e19dc3cb6cd7241085a9560a91d4346edbc525bcbfc3c86e5eeb11559c19"
+dependencies = [
+ "cfg-if",
+ "rdif-base",
+]
+
+[[package]]
+name = "rdif-clk"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee94bb098e921346fffa3bb8d18e80fbb903c8ad2cb0a103ee9a65ae1a7d77fa"
+dependencies = [
+ "rdif-base",
+]
+
+[[package]]
+name = "rdif-def"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c238eb44d86fabc99028adc973f896ce2202aeb6184cc8b89863f2d157d7ca06"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
+name = "rdif-intc"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d29b44e4bbb180ed0031e22a54d802f77226faf7064e52fcc8cf25c2376cb2ff"
+dependencies = [
+ "cfg-if",
+ "rdif-base",
+ "thiserror",
+]
+
+[[package]]
+name = "rdif-power"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37eb02828548e3d1bb13d2a5d892219dfa295c3c0c00a1a647a68f947e5d070a"
+dependencies = [
+ "rdif-base",
+]
+
+[[package]]
+name = "rdif-serial"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a3381d491f588cfb20dfa661dc374411a2cb91c751b2e18516e0d2edca6a58e"
+dependencies = [
+ "futures",
+ "rdif-base",
+ "spin_on",
+ "thiserror",
+]
+
+[[package]]
+name = "rdif-systick"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2cdd145eab68c38f23dfcc8b3b1ed20c48bbb1a4278dd9c7bf64e9219cc61158"
+dependencies = [
+ "rdif-base",
+]
+
+[[package]]
+name = "rdrive"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b3af299bb0304ce80c3d53b9c6458896d7d6a923cb67cd70ec8ef62994762f1"
+dependencies = [
+ "enum_dispatch",
+ "fdt-parser",
+ "log",
+ "paste",
+ "rdif-base",
+ "rdif-block",
+ "rdif-clk",
+ "rdif-intc",
+ "rdif-power",
+ "rdif-serial",
+ "rdif-systick",
+ "rdrive-macros",
+ "spin 0.10.0",
+ "thiserror",
+]
+
+[[package]]
+name = "rdrive-macros"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eab3105c9af32e901a2adc7d920b39ff8b6ee0f6f0b7dfdeaf18f306ec12606f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
  "bitflags 2.9.4",
 ]
 
@@ -1952,6 +2150,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d5fe4ccb98d9c292d56fec89a5e07da7fc4cf0dc11e156b41793132775d3e591"
 dependencies = [
  "lock_api",
+]
+
+[[package]]
+name = "spin_on"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "076e103ed41b9864aa838287efe5f4e3a7a0362dd00671ae62a212e5e4612da2"
+dependencies = [
+ "pin-utils",
 ]
 
 [[package]]
