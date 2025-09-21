@@ -1,12 +1,27 @@
+use alloc::{boxed::Box, vec::Vec};
 use core::sync::atomic::{AtomicU64, Ordering};
 
-use kernel_guard::NoOp;
+use kernel_guard::{NoOp, NoPreemptIrqSave};
+use kspin::SpinRaw;
 use lazyinit::LazyInit;
 use timer_list::{TimeValue, TimerEvent, TimerList};
 
 use axhal::time::wall_time;
 
 use crate::{AxTaskRef, select_run_queue};
+
+type TimerCb = Box<dyn Fn(TimeValue) + Send + Sync>;
+
+static TIMER_CALLBACKS: SpinRaw<Vec<TimerCb>> = SpinRaw::new(Vec::new());
+
+/// Registers a callback function to be called on each timer tick.
+pub fn register_timer_callback<F>(callback: F)
+where
+    F: Fn(TimeValue) + Send + Sync + 'static,
+{
+    let _g = NoPreemptIrqSave::new();
+    TIMER_CALLBACKS.lock().push(Box::new(callback));
+}
 
 static TIMER_TICKET_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -50,6 +65,10 @@ pub fn set_alarm_wakeup(deadline: TimeValue, task: &AxTaskRef) {
 }
 
 pub fn check_events() {
+    for callback in TIMER_CALLBACKS.lock().iter() {
+        callback(wall_time());
+    }
+
     loop {
         let now = wall_time();
         let event = unsafe {

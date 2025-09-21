@@ -13,6 +13,10 @@ pub(crate) use crate::run_queue::{current_run_queue, select_run_queue};
 #[cfg(feature = "task-ext")]
 pub use crate::task::{AxTaskExt, TaskExt};
 
+#[doc(cfg(all(feature = "multitask", feature = "irq")))]
+#[cfg(feature = "irq")]
+pub use crate::timers::register_timer_callback;
+
 #[doc(cfg(feature = "multitask"))]
 pub use crate::{
     task::{CurrentTask, TaskId, TaskInner, TaskState},
