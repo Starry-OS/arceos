@@ -17,10 +17,12 @@ members = [
     "modules/axsync",
     "modules/axtask",
     "modules/axipi",
+    "modules/axklib-impl",
 
     "api/axfeat",
     "api/arceos_api",
     "api/arceos_posix_api",
+    "api/axklib",
 
     "ulib/axstd",
     "ulib/axlibc",
