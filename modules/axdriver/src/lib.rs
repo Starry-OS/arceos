@@ -64,9 +64,6 @@ extern crate log;
 #[cfg(feature = "dyn")]
 extern crate alloc;
 
-#[cfg(feature = "dyn")]
-extern crate axklib_impl;
-
 #[macro_use]
 mod macros;
 
