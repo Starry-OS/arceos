@@ -14,7 +14,15 @@ block = ["axdriver_block"]
 bus-mmio = []
 bus-pci = ["dep:axdriver_pci", "dep:axhal", "dep:axconfig"]
 display = ["axdriver_display"]
-dyn = ["dep:rdrive", "dep:arm-gic-driver", "arm-gic-driver?/rdif", "dep:axmm", "dep:rdif-intc", "dep:rdif-block", "dep:dma-api"]
+dyn = [
+  "dep:rdrive",
+  "dep:arm-gic-driver",
+  "arm-gic-driver?/rdif",
+  "dep:axmm",
+  "dep:rdif-intc",
+  "dep:rdif-block",
+  "dep:dma-api",
+]
 net = ["axdriver_net"]
 
 # Enabled by features `virtio-*`
