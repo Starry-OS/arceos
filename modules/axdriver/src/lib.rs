@@ -83,7 +83,7 @@ mod ixgbe;
 mod dyn_drivers;
 
 #[cfg(feature = "dyn")]
-pub use dyn_drivers::{IoMapFunc, setup};
+pub use dyn_drivers::setup;
 
 pub mod prelude;
 

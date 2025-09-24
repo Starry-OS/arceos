@@ -38,7 +38,7 @@ fn probe_gic(info: FdtInfo<'_>, dev: PlatformDevice) -> Result<(), OnProbeError>
 
     let gic = unsafe { Gic::new(gicd.into(), gicr.into()) };
 
-    dev.register_intc(gic);
+    dev.register(rdif_intc::Intc::new(gic));
 
     Ok(())
 }

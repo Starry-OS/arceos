@@ -93,7 +93,7 @@ pub fn probe_all_devices() -> Vec<super::AxDeviceEnum> {
     let mut devices = Vec::new();
     #[cfg(feature = "block")]
     {
-        let ls = rdrive::get_list::<rdrive::driver::Block>();
+        let ls = rdrive::get_list::<rdif_block::Block>();
         for dev in ls {
             devices.push(super::AxDeviceEnum::from_block(
                 crate::dyn_drivers::blk::Block::from(dev),

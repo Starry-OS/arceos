@@ -1,30 +1,26 @@
 use core::{error::Error, ops::Deref, ptr::NonNull};
 
-use alloc::{boxed::Box, format, string::ToString};
-use axerrno::{AxError, AxResult};
-use axhal::mem::{PhysAddr, VirtAddr, phys_to_virt};
-use lazyinit::LazyInit;
-use memory_addr::MemoryAddr;
-use rdrive::register::{DriverRegister, DriverRegisterSlice};
+use alloc::{boxed::Box, format};
+use axerrno::AxError;
+use axhal::mem::{PhysAddr, phys_to_virt};
+use rdrive::{
+    DeviceId, IrqConfig,
+    register::{DriverRegister, DriverRegisterSlice},
+};
 
+mod cache;
 mod intc;
 
 #[cfg(feature = "block")]
 pub mod blk;
 
-/// A function type that maps a physical address to a virtual address. map flags should be read/write/device.
-pub type IoMapFunc = fn(PhysAddr, usize) -> AxResult<VirtAddr>;
-
-static IO_MAP_FUNC: LazyInit<IoMapFunc> = LazyInit::new();
-
 /// Sets up the device driver subsystem.
-pub fn setup(dtb: usize, io_map_func: IoMapFunc) {
-    IO_MAP_FUNC.init_once(io_map_func);
+pub fn setup(dtb: usize) {
     if dtb == 0 {
         warn!("Device tree base address is 0, skipping device driver setup.");
         return;
     }
-
+    cache::setup_dma_api();
     let dtb_virt = phys_to_virt(dtb.into());
     if let Some(dtb) = NonNull::new(dtb_virt.as_mut_ptr()) {
         rdrive::init(rdrive::Platform::Fdt { addr: dtb }).unwrap();
@@ -33,29 +29,28 @@ pub fn setup(dtb: usize, io_map_func: IoMapFunc) {
     }
 }
 
-#[allow(unused)]
+#[allow(dead_code)]
 /// maps a mmio physical address to a virtual address.
 fn iomap(addr: PhysAddr, size: usize) -> Result<NonNull<u8>, Box<dyn Error>> {
-    let end = (addr + size).align_up_4k();
-    let start = addr.align_down_4k();
-    let offset = addr - start;
-    let size = end - start;
-    let iomap = *IO_MAP_FUNC
-        .get()
-        .ok_or_else(|| "IO map function not initialized".to_string())?;
-
-    let virt = match iomap(start, size) {
+    let virt = match axmm::iomap(addr, size) {
         Ok(val) => val,
-        Err(AxError::AlreadyExists) => phys_to_virt(start),
+        Err(AxError::AlreadyExists) => phys_to_virt(addr),
         Err(e) => {
             return Err(format!(
-                "Failed to map MMIO region: {e:?} (addr: {start:?}, size: {size:#x})"
+                "Failed to map MMIO region: {e:?} (addr: {addr:?}, size: {size:#x})"
             )
             .into());
         }
     };
-    let start_virt = virt + offset;
-    Ok(unsafe { NonNull::new_unchecked(start_virt.as_mut_ptr()) })
+    Ok(unsafe { NonNull::new_unchecked(virt.as_mut_ptr()) })
+}
+
+#[allow(dead_code)]
+fn parse_fdt_irq(intc: DeviceId, irq: &[u32]) -> IrqConfig {
+    let intc = rdrive::get::<rdif_intc::Intc>(intc).expect("No interrupt controller found");
+    let intc = intc.lock().unwrap();
+    let fdt_parse = intc.parse_dtb_fn().expect("No DTB parse function found");
+    fdt_parse(irq).unwrap()
 }
 
 fn driver_registers() -> impl Deref<Target = [DriverRegister]> {

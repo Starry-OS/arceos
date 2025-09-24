@@ -6,11 +6,11 @@ use axdriver_block::BlockDriverOps;
 use axdriver_virtio::MmioTransport;
 use axhal::mem::PhysAddr;
 use rdrive::{
-    DriverGeneric, PlatformDevice, driver::block::*, module_driver, probe::OnProbeError,
-    register::FdtInfo,
+    DriverGeneric, PlatformDevice, module_driver, probe::OnProbeError, register::FdtInfo,
 };
 
-use crate::dyn_drivers::blk::maping_dev_err_to_io_err;
+use super::PlatformDeviceBlock;
+use crate::dyn_drivers::blk::maping_dev_err_to_blk_err;
 use crate::dyn_drivers::iomap;
 use crate::virtio::VirtIoHalImpl;
 
@@ -56,13 +56,19 @@ fn probe(info: FdtInfo<'_>, plat_dev: PlatformDevice) -> Result<(), OnProbeError
         ))
     })?;
 
-    let dev = BlockDivce(dev);
+    let dev = BlockDivce { dev: Some(dev) };
     plat_dev.register_block(dev);
     debug!("virtio block device registered successfully");
     Ok(())
 }
 
-struct BlockDivce(Device<MmioTransport>);
+struct BlockDivce {
+    dev: Option<Device<MmioTransport>>,
+}
+
+struct BlockQueue {
+    raw: Device<MmioTransport>,
+}
 
 impl DriverGeneric for BlockDivce {
     fn open(&mut self) -> Result<(), rdrive::KError> {
@@ -74,26 +80,100 @@ impl DriverGeneric for BlockDivce {
     }
 }
 
-impl rdrive::driver::block::Interface for BlockDivce {
+impl rdif_block::Interface for BlockDivce {
+    fn create_queue(&mut self) -> Option<alloc::boxed::Box<dyn rdif_block::IQueue>> {
+        self.dev
+            .take()
+            .map(|dev| alloc::boxed::Box::new(BlockQueue { raw: dev }) as _)
+    }
+
+    fn enable_irq(&mut self) {
+        todo!()
+    }
+
+    fn disable_irq(&mut self) {
+        todo!()
+    }
+
+    fn is_irq_enabled(&self) -> bool {
+        false
+    }
+
+    fn handle_irq(&mut self) -> rdif_block::Event {
+        rdif_block::Event::none()
+    }
+}
+
+impl rdif_block::IQueue for BlockQueue {
     fn num_blocks(&self) -> usize {
-        self.0.num_blocks() as _
+        self.raw.num_blocks() as _
     }
 
     fn block_size(&self) -> usize {
-        self.0.block_size()
+        self.raw.block_size()
     }
 
-    fn read_block(&mut self, block_id: usize, buf: &mut [u8]) -> Result<(), io::Error> {
-        self.0
-            .read_block(block_id as u64, buf)
-            .map_err(maping_dev_err_to_io_err)
+    fn id(&self) -> usize {
+        0
     }
-    fn write_block(&mut self, block_id: usize, buf: &[u8]) -> Result<(), io::Error> {
-        self.0
-            .write_block(block_id as u64, buf)
-            .map_err(maping_dev_err_to_io_err)
+
+    fn buff_config(&self) -> rdif_block::BuffConfig {
+        rdif_block::BuffConfig {
+            dma_mask: u64::MAX,
+            align: 0x1000,
+            size: self.block_size(),
+        }
     }
-    fn flush(&mut self) -> Result<(), io::Error> {
-        self.0.flush().map_err(maping_dev_err_to_io_err)
+
+    fn submit_request(
+        &mut self,
+        request: rdif_block::Request<'_>,
+    ) -> Result<rdif_block::RequestId, rdif_block::BlkError> {
+        let id = request.block_id;
+        match request.kind {
+            rdif_block::RequestKind::Read(mut buffer) => {
+                self.raw
+                    .read_block(id as _, &mut buffer)
+                    .map_err(maping_dev_err_to_blk_err)?;
+                Ok(rdif_block::RequestId::new(0))
+            }
+            rdif_block::RequestKind::Write(items) => {
+                self.raw
+                    .write_block(id as _, items)
+                    .map_err(maping_dev_err_to_blk_err)?;
+                Ok(rdif_block::RequestId::new(0))
+            }
+        }
+    }
+
+    fn poll_request(
+        &mut self,
+        _request: rdif_block::RequestId,
+    ) -> Result<(), rdif_block::BlkError> {
+        Ok(())
     }
 }
+
+// impl rd::Interface for BlockDivce {
+//     fn num_blocks(&self) -> usize {
+//         self.0.num_blocks() as _
+//     }
+
+//     fn block_size(&self) -> usize {
+//         self.0.block_size()
+//     }
+
+//     fn read_block(&mut self, block_id: usize, buf: &mut [u8]) -> Result<(), io::Error> {
+//         self.0
+//             .read_block(block_id as u64, buf)
+//             .map_err(maping_dev_err_to_blk_err)
+//     }
+//     fn write_block(&mut self, block_id: usize, buf: &[u8]) -> Result<(), io::Error> {
+//         self.0
+//             .write_block(block_id as u64, buf)
+//             .map_err(maping_dev_err_to_blk_err)
+//     }
+//     fn flush(&mut self) -> Result<(), io::Error> {
+//         self.0.flush().map_err(maping_dev_err_to_blk_err)
+//     }
+// }

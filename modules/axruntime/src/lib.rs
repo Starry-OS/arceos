@@ -155,7 +155,7 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
     axmm::init_memory_management();
 
     #[cfg(feature = "driver-dyn")]
-    axdriver::setup(arg, iomap);
+    axdriver::setup(arg);
 
     info!("Initialize platform devices...");
     axhal::init_later(cpu_id, arg);
