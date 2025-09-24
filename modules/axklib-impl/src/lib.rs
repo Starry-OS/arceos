@@ -2,7 +2,6 @@
 
 use core::time::Duration;
 
-use axklib::_if::Klib;
 use axklib::*;
 
 struct KlibImpl;
@@ -17,14 +16,22 @@ impl_trait! {
             time::busy_wait(dur);
         }
 
-        #[cfg(feature = "irq")]
-        fn irq_set_enable(irq: usize, enabled: bool) {
-            irq::set_enable(irq, enabled);
+        fn irq_set_enable(_irq: usize, _enabled: bool) {
+            #[cfg(feature = "irq")]
+            irq::set_enable(_irq, _enabled);
+            #[cfg(not(feature = "irq"))]
+            unimplemented!();
         }
 
-        #[cfg(feature = "irq")]
-        fn irq_register(irq: usize, handler: IrqHandler) -> bool {
-            irq::register(irq, handler)
+        fn irq_register(_irq: usize, _handler: IrqHandler) -> bool {
+            #[cfg(feature = "irq")]
+            {
+                irq::register(_irq, _handler)
+            }
+            #[cfg(not(feature = "irq"))]
+            {
+                unimplemented!()
+            }
         }
     }
 }

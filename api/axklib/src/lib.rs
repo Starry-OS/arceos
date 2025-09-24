@@ -17,9 +17,8 @@ pub trait Klib {
 
     fn time_busy_wait(dur: Duration);
 
-    #[cfg(feature = "irq")]
     fn irq_set_enable(irq: usize, enabled: bool);
-    #[cfg(feature = "irq")]
+
     fn irq_register(irq: usize, handler: IrqHandler) -> bool;
 }
 
@@ -31,7 +30,6 @@ pub mod time {
     pub use super::klib::time_busy_wait as busy_wait;
 }
 
-#[cfg(feature = "irq")]
 pub mod irq {
     pub use super::klib::irq_register as register;
     pub use super::klib::irq_set_enable as set_enable;

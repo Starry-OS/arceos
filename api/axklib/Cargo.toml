@@ -10,9 +10,6 @@ repository.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
-[features]
-irq = []
-
 [dependencies]
 trait-ffi = "0.2"
 memory_addr = "0.4"

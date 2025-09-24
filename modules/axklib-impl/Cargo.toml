@@ -11,7 +11,7 @@ repository.workspace = true
 version.workspace = true
 
 [features]
-irq = ["axklib/irq", "axhal/irq"]
+irq = ["axhal/irq"]
 
 [dependencies]
 axhal = {workspace = true}
