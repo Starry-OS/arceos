@@ -223,11 +223,17 @@ fn init_allocator() {
     let mut max_region_size = 0;
     let mut max_region_paddr = 0.into();
     for r in memory_regions() {
-        if r.flags.contains(MemRegionFlags::FREE) && r.size > max_region_size {
-            max_region_size = r.size;
-            max_region_paddr = r.paddr;
-            // use lowest addr region
-            break;
+        if r.name == ".bss" {
+            use_next_free = true;
+        } else if r.flags.contains(MemRegionFlags::FREE) {
+            if use_next_free {
+                max_region_size = r.size;
+                max_region_paddr = r.paddr;
+                break;
+            } else if r.size > max_region_size {
+                max_region_size = r.size;
+                max_region_paddr = r.paddr;
+            }
         }
     }
     for r in memory_regions() {
