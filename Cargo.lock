@@ -2341,9 +2341,9 @@ checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
 name = "trait-ffi"
-version = "0.2.9"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "603471aac0a50dcf4cfbcdb0edb49a2d734b33d2b84a0d6b714ed8b06b811e25"
+checksum = "d87d49469ee333631b3130bec28965c47dcf0d4f3a792f8ed425dd036cf84be7"
 dependencies = [
  "convert_case",
  "lenient_semver",
