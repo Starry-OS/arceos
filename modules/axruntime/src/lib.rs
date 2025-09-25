@@ -223,7 +223,7 @@ fn init_allocator() {
     let mut max_region_size = 0;
     let mut max_region_paddr = 0.into();
     let mut use_next_free = false;
-    
+
     for r in memory_regions() {
         if r.name == ".bss" {
             use_next_free = true;
