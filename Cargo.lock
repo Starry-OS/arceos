@@ -897,6 +897,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "bare-test-macros"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e585a01076fee271c5aabcf36212acb349fb3e638561d842fffa8ca013f4fdd8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "base64"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1803,6 +1814,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
+name = "pci_types"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4325c6aa3cca3373503b1527e75756f9fbfe5fd76be4b4c8a143ee47430b8e0"
+dependencies = [
+ "bit_field",
+ "bitflags 2.9.4",
+]
+
+[[package]]
+name = "pcie"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eae61ad2f3117b7126759195cc43de69ace1cf3baf04eb673f587ada08cd484d"
+dependencies = [
+ "bare-test-macros",
+ "bit_field",
+ "bitflags 2.9.4",
+ "enum_dispatch",
+ "log",
+ "pci_types",
+ "rdif-pcie",
+ "thiserror",
+]
+
+[[package]]
 name = "percpu"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1998,16 +2035,29 @@ dependencies = [
 ]
 
 [[package]]
-name = "rdrive"
-version = "0.18.0"
+name = "rdif-pcie"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e997dc02215be04df3bb680c7cc45660c562b9f0b2d9689058f28e2bf0665693"
+checksum = "1e08216e4db4287b9faabfcbb0cff6ebae0b976c9bd55744ede1145e62a7a1bb"
+dependencies = [
+ "pci_types",
+ "rdif-base",
+ "thiserror",
+]
+
+[[package]]
+name = "rdrive"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6038412f873d35095f7c42e2c5481518c1747e012187bb56722f5b1c79669eee"
 dependencies = [
  "enum_dispatch",
  "fdt-parser",
  "log",
  "paste",
+ "pcie",
  "rdif-base",
+ "rdif-pcie",
  "rdrive-macros",
  "spin 0.10.0",
  "thiserror",

@@ -10,6 +10,7 @@ use rdrive::{
 
 mod cache;
 mod intc;
+mod pci;
 
 #[cfg(feature = "block")]
 pub mod blk;
