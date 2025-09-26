@@ -26,7 +26,7 @@ fn divide_page(size: usize, page_size: PageSize) -> usize {
     size >> (page_size as usize).trailing_zeros()
 }
 
-fn alloc_frame(zeroed: bool, size: PageSize) -> AxResult<PhysAddr> {
+pub fn alloc_frame(zeroed: bool, size: PageSize) -> AxResult<PhysAddr> {
     let page_size = size as usize;
     let num_pages = page_size / PAGE_SIZE_4K;
     let vaddr =
@@ -39,7 +39,7 @@ fn alloc_frame(zeroed: bool, size: PageSize) -> AxResult<PhysAddr> {
     Ok(paddr)
 }
 
-fn dealloc_frame(frame: PhysAddr, align: PageSize) {
+pub fn dealloc_frame(frame: PhysAddr, align: PageSize) {
     let vaddr = phys_to_virt(frame);
     let page_size: usize = align.into();
     let num_pages = page_size / PAGE_SIZE_4K;
