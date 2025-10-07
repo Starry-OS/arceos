@@ -14,6 +14,9 @@ use pin_project::pin_project;
 
 use crate::{AxTaskRef, WeakAxTaskRef, current, current_run_queue, select_run_queue};
 
+mod poll;
+pub use poll::*;
+
 #[cfg(feature = "irq")]
 mod time;
 #[cfg(feature = "irq")]

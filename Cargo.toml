@@ -75,6 +75,7 @@ axdriver_pci = { git = "https://github.com/arceos-org/axdriver_crates.git", tag 
 axdriver_virtio = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "v0.1.2" }
 axerrno = "0.1"
 axio = "0.1"
+axpoll = "0.1"
 bindgen = "0.72"
 cfg-if = "1.0"
 chrono = { version = "0.4", default-features = false }
@@ -106,3 +107,4 @@ axplat-aarch64-raspi = { git = "https://github.com/Starry-OS/axplat_crates.git" 
 axplat-loongarch64-qemu-virt = { git = "https://github.com/Starry-OS/axplat_crates.git" }
 axplat-riscv64-qemu-virt = { git = "https://github.com/Starry-OS/axplat_crates.git" }
 axplat-x86-pc = { git = "https://github.com/Starry-OS/axplat_crates.git" }
+axpoll = { git = "https://github.com/Starry-OS/axpoll.git" }

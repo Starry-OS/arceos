@@ -529,6 +529,7 @@ dependencies = [
  "axplat-loongarch64-qemu-virt",
  "axplat-riscv64-qemu-virt",
  "axplat-x86-pc",
+ "axpoll",
  "cfg-if",
  "heapless 0.8.0",
  "kernel_guard",
@@ -775,6 +776,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "axpoll"
+version = "0.1.0"
+source = "git+https://github.com/Starry-OS/axpoll.git#258cb5f4b8eef9062118fbd9dd2935f04e611fec"
+dependencies = [
+ "bitflags 2.9.2",
+ "linux-raw-sys",
+ "spin 0.10.0",
+]
+
+[[package]]
 name = "axruntime"
 version = "0.2.0"
 dependencies = [
@@ -837,6 +848,7 @@ dependencies = [
  "axconfig",
  "axerrno",
  "axhal",
+ "axpoll",
  "axsched",
  "axtask",
  "cfg-if",
@@ -1552,6 +1564,12 @@ dependencies = [
  "quote",
  "syn 2.0.106",
 ]
+
+[[package]]
+name = "linux-raw-sys"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 
 [[package]]
 name = "lock_api"
