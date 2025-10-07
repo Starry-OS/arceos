@@ -283,14 +283,14 @@ fn init_interrupt() {
         axhal::time::set_oneshot_timer(deadline);
     }
 
-    axhal::irq::register(axconfig::devices::TIMER_IRQ, || {
+    axhal::irq::register(axconfig::devices::TIMER_IRQ, |_| {
         update_timer();
         #[cfg(feature = "multitask")]
         axtask::on_timer_tick();
     });
 
     #[cfg(feature = "ipi")]
-    axhal::irq::register(axhal::irq::IPI_IRQ, || {
+    axhal::irq::register(axhal::irq::IPI_IRQ, |_| {
         axipi::ipi_handler();
     });
 
