@@ -44,8 +44,9 @@ dependencies = [
 [[package]]
 name = "allocator"
 version = "0.1.1"
-source = "git+https://github.com/Starry-OS/allocator.git?rev=d5feebd#d5feebd4837eecbef13536d5f409f31bb87f550b"
+source = "git+https://github.com/Starry-OS/allocator.git?rev=918365e#918365ebdd9c0a542df4b5a86ab36a2244440617"
 dependencies = [
+ "axerrno",
  "bitmap-allocator",
  "buddy_system_allocator",
  "cfg-if",
@@ -240,6 +241,12 @@ checksum = "13696b1c2b59992f4223e0ae5bb173c81c63039367ca90eee845346ad2a13421"
 dependencies = [
  "chrono",
 ]
+
+[[package]]
+name = "arrayvec"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
 name = "atomic-polyfill"
@@ -593,11 +600,14 @@ dependencies = [
  "axconfig",
  "axerrno",
  "axhal",
+ "axsync",
+ "enum_dispatch",
  "kspin",
  "lazyinit",
  "log",
  "memory_addr",
  "memory_set",
+ "page_table_multiarch",
 ]
 
 [[package]]
@@ -1627,9 +1637,9 @@ checksum = "3d4054cba279515fa87761b101d857333ce06391dbe8f18a11347204a7111416"
 [[package]]
 name = "memory_set"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7d47cbc25a4d00427f9070fd768eaf907f19c903fb72b547b19db2d56b9408e"
+source = "git+https://github.com/Starry-OS/axmm_crates.git?rev=5554d9b#5554d9b1a21aa5ee67317eb15a7146336f318b01"
 dependencies = [
+ "axerrno",
  "memory_addr",
 ]
 
@@ -1682,8 +1692,7 @@ checksum = "a4895175b425cb1f87721b59f0f286c2092bd4af812243672510e1ac53e2e0ad"
 [[package]]
 name = "page_table_entry"
 version = "0.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba811ef8ca8fb33d776e128624cb4fe25c9804cab96f83b822d4322431e6dd5a"
+source = "git+https://github.com/Starry-OS/page_table_multiarch.git#3816e9b3088899e9f199530078ae40b2b29ca66d"
 dependencies = [
  "aarch64-cpu 10.0.0",
  "bitflags 2.9.2",
@@ -1694,9 +1703,10 @@ dependencies = [
 [[package]]
 name = "page_table_multiarch"
 version = "0.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98cb76e21ce462270afd83b331599d5b83f876c2a98c0a70382b20d73e1da6be"
+source = "git+https://github.com/Starry-OS/page_table_multiarch.git#3816e9b3088899e9f199530078ae40b2b29ca66d"
 dependencies = [
+ "arrayvec",
+ "axerrno",
  "bitmaps",
  "log",
  "memory_addr",

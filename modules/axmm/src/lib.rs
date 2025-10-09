@@ -4,34 +4,25 @@
 
 #[macro_use]
 extern crate log;
+
 extern crate alloc;
 
 mod aspace;
-mod backend;
+pub mod backend;
+mod page_iter;
 
-pub use self::aspace::AddrSpace;
-pub use self::backend::Backend;
-
-use axerrno::{AxError, AxResult};
-use axhal::mem::{MemRegionFlags, phys_to_virt};
-use axhal::paging::MappingFlags;
+use axerrno::AxResult;
+use axhal::{
+    mem::{MemRegionFlags, phys_to_virt},
+    paging::MappingFlags,
+};
 use kspin::SpinNoIrq;
 use lazyinit::LazyInit;
-use memory_addr::{MemoryAddr, PhysAddr, VirtAddr, va};
-use memory_set::MappingError;
+use memory_addr::{MemoryAddr, PhysAddr, va};
+
+pub use self::aspace::AddrSpace;
 
 static KERNEL_ASPACE: LazyInit<SpinNoIrq<AddrSpace>> = LazyInit::new();
-
-fn mapping_err_to_ax_err(err: MappingError) -> AxError {
-    if !matches!(err, MappingError::AlreadyExists) {
-        warn!("Mapping error: {err:?}");
-    }
-    match err {
-        MappingError::InvalidParam => AxError::InvalidInput,
-        MappingError::AlreadyExists => AxError::AlreadyExists,
-        MappingError::BadState => AxError::BadState,
-    }
-}
 
 fn reg_flag_to_map_flag(f: MemRegionFlags) -> MappingFlags {
     let mut ret = MappingFlags::empty();
@@ -69,18 +60,6 @@ pub fn new_kernel_aspace() -> AxResult<AddrSpace> {
             end - start,
             reg_flag_to_map_flag(r.flags),
         )?;
-    }
-    Ok(aspace)
-}
-
-/// Creates a new address space for user processes.
-pub fn new_user_aspace(base: VirtAddr, size: usize) -> AxResult<AddrSpace> {
-    let mut aspace = AddrSpace::new_empty(base, size)?;
-    if !cfg!(target_arch = "aarch64") && !cfg!(target_arch = "loongarch64") {
-        // ARMv8 (aarch64) and LoongArch64 use separate page tables for user space
-        // (aarch64: TTBR0_EL1, LoongArch64: PGDL), so there is no need to copy the
-        // kernel portion to the user page table.
-        aspace.copy_mappings_from(&kernel_aspace().lock())?;
     }
     Ok(aspace)
 }
