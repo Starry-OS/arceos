@@ -32,7 +32,7 @@ pub use axerrno::AxError;
 /// Type alias for a simple IRQ handler function pointer.
 ///
 /// Handlers use the raw ABI required by the platform and take no arguments.
-pub type IrqHandler = fn();
+pub type IrqHandler = fn(usize);
 
 pub use memory_addr::{PhysAddr, VirtAddr};
 

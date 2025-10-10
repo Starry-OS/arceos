@@ -18,7 +18,7 @@ use axhal::{
 };
 use kspin::SpinNoIrq;
 use lazyinit::LazyInit;
-use memory_addr::{MemoryAddr, PhysAddr, va};
+use memory_addr::{MemoryAddr, PhysAddr, VirtAddr, va};
 use memory_set::MappingError;
 
 pub use self::aspace::AddrSpace;
