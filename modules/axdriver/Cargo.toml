@@ -21,10 +21,10 @@ dyn = [
   "dep:rdrive",
   "dep:arm-gic-driver",
   "arm-gic-driver?/rdif",
-  "dep:axmm",
   "dep:rdif-intc",
   "dep:rdif-block",
   "dep:dma-api",
+  "dep:axklib",
 ]
 input = ["axdriver_input"]
 net = ["axdriver_net"]
@@ -59,6 +59,8 @@ axalloc = {workspace = true, optional = true}
 axconfig = {workspace = true, optional = true}
 axdma = {workspace = true, optional = true}
 
+axklib = {workspace = true, optional = true}
+
 axdriver_base = { git = "https://github.com/Starry-OS/axdriver_crates.git", rev = "a887828" }
 axdriver_block = { git = "https://github.com/Starry-OS/axdriver_crates.git", rev = "a887828", optional = true }
 axdriver_display = { git = "https://github.com/Starry-OS/axdriver_crates.git", rev = "a887828", optional = true }
@@ -69,7 +71,6 @@ axdriver_virtio = { git = "https://github.com/Starry-OS/axdriver_crates.git", re
 
 axerrno = {workspace = true}
 axhal = {workspace = true, optional = true}
-axmm = {workspace = true, optional = true}
 
 cfg-if = { workspace = true }
 crate_interface = { workspace = true }

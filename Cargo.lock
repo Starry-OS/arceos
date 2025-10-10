@@ -31,6 +31,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "addr2line"
+version = "0.25.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b5d307320b3181d6d7954e663bd7c774a838b8220fe0593c86d9fb09f498b4b"
+dependencies = [
+ "cpp_demangle",
+ "gimli",
+ "rustc-demangle",
+ "rustc-std-workspace-alloc",
+]
+
+[[package]]
+name = "ahci_driver"
+version = "0.1.0"
+source = "git+https://github.com/Starry-OS/ahci_driver.git?rev=beaa9c8#beaa9c8a183518da9f29363f3619dc53161450e4"
+
+[[package]]
 name = "aho-corasick"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -50,6 +67,12 @@ dependencies = [
  "rlsf",
  "slab_allocator",
 ]
+
+[[package]]
+name = "allocator-api2"
+version = "0.2.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "android_system_properties"
@@ -144,10 +167,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "arrayvec"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
+
+[[package]]
 name = "as-any"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0f477b951e452a0b6b4a10b53ccd569042d1d01729b519e02074a9c0958a063"
+
+[[package]]
+name = "async-channel"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "924ed96dd52d1b75e9c1a3e6275715fd320f5f9439fb5a4a11fa51f4221158d2"
+dependencies = [
+ "concurrent-queue",
+ "event-listener-strategy",
+ "futures-core",
+ "pin-project-lite",
+]
 
 [[package]]
 name = "async-trait"
@@ -282,6 +323,7 @@ dependencies = [
 name = "axdriver"
 version = "0.2.0"
 dependencies = [
+ "ahci_driver",
  "arm-gic-driver",
  "axalloc",
  "axconfig",
@@ -295,13 +337,14 @@ dependencies = [
  "axdriver_virtio",
  "axerrno",
  "axhal",
- "axmm",
+ "axklib",
  "cfg-if",
  "crate_interface",
  "dma-api",
  "lazyinit",
  "log",
  "memory_addr",
+ "printf-compat",
  "rdif-block",
  "rdif-intc",
  "rdrive",
@@ -311,12 +354,12 @@ dependencies = [
 [[package]]
 name = "axdriver_base"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=b707728#b70772886bf92212accd9bab05a5517d778a685d"
+source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a887828#a887828dbf5c7b5ffb7688dd0afc64259e1b4f4a"
 
 [[package]]
 name = "axdriver_block"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=b707728#b70772886bf92212accd9bab05a5517d778a685d"
+source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a887828#a887828dbf5c7b5ffb7688dd0afc64259e1b4f4a"
 dependencies = [
  "axdriver_base",
  "bcm2835-sdhci",
@@ -328,7 +371,7 @@ dependencies = [
 [[package]]
 name = "axdriver_display"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=b707728#b70772886bf92212accd9bab05a5517d778a685d"
+source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a887828#a887828dbf5c7b5ffb7688dd0afc64259e1b4f4a"
 dependencies = [
  "axdriver_base",
 ]
@@ -336,7 +379,7 @@ dependencies = [
 [[package]]
 name = "axdriver_input"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=b707728#b70772886bf92212accd9bab05a5517d778a685d"
+source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a887828#a887828dbf5c7b5ffb7688dd0afc64259e1b4f4a"
 dependencies = [
  "axdriver_base",
  "strum",
@@ -345,7 +388,7 @@ dependencies = [
 [[package]]
 name = "axdriver_net"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=b707728#b70772886bf92212accd9bab05a5517d778a685d"
+source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a887828#a887828dbf5c7b5ffb7688dd0afc64259e1b4f4a"
 dependencies = [
  "axdriver_base",
  "fxmac_rs",
@@ -357,7 +400,7 @@ dependencies = [
 [[package]]
 name = "axdriver_pci"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=b707728#b70772886bf92212accd9bab05a5517d778a685d"
+source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a887828#a887828dbf5c7b5ffb7688dd0afc64259e1b4f4a"
 dependencies = [
  "virtio-drivers",
 ]
@@ -365,7 +408,7 @@ dependencies = [
 [[package]]
 name = "axdriver_virtio"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=b707728#b70772886bf92212accd9bab05a5517d778a685d"
+source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a887828#a887828dbf5c7b5ffb7688dd0afc64259e1b4f4a"
 dependencies = [
  "axdriver_base",
  "axdriver_block",
@@ -415,6 +458,7 @@ dependencies = [
  "axfs-ng-vfs",
  "axhal",
  "axio",
+ "axpoll",
  "axsync",
  "bitflags 2.9.4",
  "cfg-if",
@@ -434,10 +478,15 @@ dependencies = [
 [[package]]
 name = "axfs-ng-vfs"
 version = "0.1.0"
-source = "git+https://github.com/Starry-OS/axfs-ng-vfs.git?rev=e3e83d6#e3e83d621094f520602a17ad91223aa9e3ea243e"
+source = "git+https://github.com/Starry-OS/axfs-ng-vfs.git#6cf8893cc28eeeb34e870cfa3186b7d14226c641"
 dependencies = [
  "axerrno",
+ "axpoll",
  "bitflags 2.9.4",
+ "cfg-if",
+ "hashbrown 0.15.5",
+ "inherit-methods-macro",
+ "kspin",
  "log",
  "smallvec",
 ]
@@ -450,13 +499,13 @@ dependencies = [
  "axalloc",
  "axconfig",
  "axcpu",
- "axio",
  "axlog",
  "axplat",
  "axplat-aarch64-qemu-virt",
  "axplat-loongarch64-qemu-virt",
  "axplat-riscv64-qemu-virt",
  "axplat-x86-pc",
+ "axpoll",
  "cfg-if",
  "heapless 0.8.0",
  "kernel_guard",
@@ -521,17 +570,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "axlibc"
-version = "0.2.0"
-dependencies = [
- "arceos_posix_api",
- "axerrno",
- "axfeat",
- "axio",
- "bindgen",
-]
-
-[[package]]
 name = "axlog"
 version = "0.2.0"
 dependencies = [
@@ -578,13 +616,14 @@ dependencies = [
  "axfs-ng-vfs",
  "axhal",
  "axio",
+ "axpoll",
  "axsync",
  "axtask",
  "bitflags 2.9.4",
  "cfg-if",
  "enum_dispatch",
  "event-listener",
- "hashbrown",
+ "hashbrown 0.15.5",
  "lazy_static",
  "lazyinit",
  "log",
@@ -712,6 +751,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "axpoll"
+version = "0.1.0"
+source = "git+https://github.com/Starry-OS/axpoll.git#258cb5f4b8eef9062118fbd9dd2935f04e611fec"
+dependencies = [
+ "bitflags 2.9.4",
+ "linux-raw-sys",
+ "spin 0.10.0",
+]
+
+[[package]]
 name = "axruntime"
 version = "0.2.0"
 dependencies = [
@@ -721,7 +770,8 @@ dependencies = [
  "axdisplay",
  "axdriver",
  "axerrno",
- "axfs",
+ "axfs-ng",
+ "axfs-ng-vfs",
  "axhal",
  "axinput",
  "axipi",
@@ -763,7 +813,7 @@ dependencies = [
  "axconfig",
  "axerrno",
  "axhal",
- "axio",
+ "axpoll",
  "axsched",
  "axtask",
  "cfg-if",
@@ -779,7 +829,8 @@ dependencies = [
  "percpu",
  "pin-project",
  "rand",
- "timer_list",
+ "spin 0.10.0",
+ "weak-map",
 ]
 
 [[package]]
@@ -843,6 +894,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e4b40c7323adcfc0a41c4b88143ed58346ff65a288fc144329c5c45e05d70c6"
 
 [[package]]
+name = "bitfield-struct"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3ca019570363e800b05ad4fd890734f28ac7b72f563ad8a35079efb793616f8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -896,7 +958,9 @@ version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f154e572231cb6ba2bd1176980827e3d5dc04cc183a75dea38109fbdd672d29"
 dependencies = [
- "bitflags 2.9.4",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
 ]
 
 [[package]]
@@ -1185,15 +1249,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dw_apb_uart"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f93d496c8faa9dc676ebfa225432e1e3b57645c9268ead889286546f6d39356d"
-dependencies = [
- "tock-registers 0.8.1",
-]
-
-[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1299,13 +1354,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0399f9d26e5191ce32c498bebd31e7a3ceabc2745f0ac54af3f335126c3f24b3"
 
 [[package]]
-name = "flatten_objects"
-version = "0.2.4"
+name = "fnv"
+version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f7719d63de27ac93e7cd2c8e0c03083f8b0ff7f842fdb6280b8cdcac21b4baf"
-dependencies = [
- "bitmaps",
-]
+checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+
+[[package]]
+name = "foldhash"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 
 [[package]]
 name = "futures"
@@ -1453,6 +1511,17 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
+version = "0.15.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
+dependencies = [
+ "allocator-api2",
+ "equivalent",
+ "foldhash",
+]
+
+[[package]]
+name = "hashbrown"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5419bdc4f6a9207fbeba6d11b604d481addf78ecd10c11ad51e76c2f6482748d"
@@ -1533,7 +1602,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b0f83760fb341a774ed326568e19f5a863af4a952def8c39f9ab92fd95b88e5"
 dependencies = [
  "equivalent",
- "hashbrown",
+ "hashbrown 0.16.0",
 ]
 
 [[package]]
@@ -1720,12 +1789,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "linked_list_r4l"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54c6e48d7df84e6414be8e53976ead35ba4d47a4ba561eaad5d1e2b1447b4c0a"
-
-[[package]]
 name = "linkme"
 version = "0.3.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1744,6 +1807,12 @@ dependencies = [
  "quote",
  "syn 2.0.106",
 ]
+
+[[package]]
+name = "linux-raw-sys"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 
 [[package]]
 name = "lock_api"
@@ -1771,6 +1840,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "lru"
+version = "0.16.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfe949189f46fabb938b3a9a0be30fdd93fd8a09260da863399a8cf3db756ec8"
+dependencies = [
+ "hashbrown 0.15.5",
+]
+
+[[package]]
+name = "lwext4_rust"
+version = "0.2.0"
+source = "git+https://github.com/Starry-OS/lwext4_rust.git?rev=033fa2c#033fa2cc848c7495651b00af6695dc07de06d596"
+dependencies = [
+ "bindgen",
+ "log",
+]
+
+[[package]]
 name = "managed"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1781,6 +1868,15 @@ name = "memchr"
 version = "2.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
+
+[[package]]
+name = "memoffset"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
+dependencies = [
+ "autocfg",
+]
 
 [[package]]
 name = "memory_addr"
@@ -1930,6 +2026,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pin-project"
+version = "1.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "677f1add503faace112b9f1373e43e9e054bfdd22ff1a63c1bc485eaec6a6a8a"
+dependencies = [
+ "pin-project-internal",
+]
+
+[[package]]
+name = "pin-project-internal"
+version = "1.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e918e4ff8c4549eb882f14b3a4bc8c8bc93de829416eacf579f1207a8fbf861"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "pin-project-lite"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1940,6 +2056,21 @@ name = "pin-utils"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
+
+[[package]]
+name = "portable-atomic"
+version = "1.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f84267b20a16ea918e43c6a88433c2d54fa145c92a811b5b047ccbe153674483"
+
+[[package]]
+name = "portable-atomic-util"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8a2f0d8d040d7848a709caf78912debcc3f33ee4b3cac47d73d1e1069e83507"
+dependencies = [
+ "portable-atomic",
+]
 
 [[package]]
 name = "ppv-lite86"
@@ -2178,6 +2309,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "caf4aa5b0f434c91fe5c7f1ecb6a5ece2130b02ad2a590589dda5146df959001"
 
 [[package]]
+name = "ringbuf"
+version = "0.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe47b720588c8702e34b5979cb3271a8b1842c7cb6f57408efa70c779363488c"
+dependencies = [
+ "crossbeam-utils",
+ "portable-atomic-util",
+]
+
+[[package]]
 name = "riscv"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2294,6 +2435,35 @@ name = "semver"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d767eb0aabc880b29956c35734170f26ed551a859dbd361d140cdbeca61ab1e2"
+
+[[package]]
+name = "serde"
+version = "1.0.228"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
+dependencies = [
+ "serde_core",
+]
+
+[[package]]
+name = "serde_core"
+version = "1.0.228"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41d385c7d4ca58e59fc732af25c3983b67ac852c1a25000afe1175de458b67ad"
+dependencies = [
+ "serde_derive",
+]
+
+[[package]]
+name = "serde_derive"
+version = "1.0.228"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d540f220d3187173da220f885ab66608367b6574e925011a9353e4badda91d79"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
 
 [[package]]
 name = "shlex"

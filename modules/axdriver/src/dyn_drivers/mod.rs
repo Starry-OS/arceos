@@ -1,10 +1,10 @@
-use core::{error::Error, ops::Deref, ptr::NonNull};
+use core::{ops::Deref, ptr::NonNull};
 
-use alloc::{boxed::Box, format};
 use axerrno::AxError;
 use axhal::mem::{PhysAddr, phys_to_virt};
 use rdrive::{
     DeviceId, IrqConfig,
+    probe::OnProbeError,
     register::{DriverRegister, DriverRegisterSlice},
 };
 
@@ -32,18 +32,13 @@ pub fn setup(dtb: usize) {
 
 #[allow(dead_code)]
 /// maps a mmio physical address to a virtual address.
-fn iomap(addr: PhysAddr, size: usize) -> Result<NonNull<u8>, Box<dyn Error>> {
-    let virt = match axmm::iomap(addr, size) {
-        Ok(val) => val,
-        Err(AxError::AlreadyExists) => phys_to_virt(addr),
-        Err(e) => {
-            return Err(format!(
-                "Failed to map MMIO region: {e:?} (addr: {addr:?}, size: {size:#x})"
-            )
-            .into());
-        }
-    };
-    Ok(unsafe { NonNull::new_unchecked(virt.as_mut_ptr()) })
+fn iomap(addr: PhysAddr, size: usize) -> Result<NonNull<u8>, OnProbeError> {
+    axklib::mem::iomap(addr, size)
+        .map_err(|e| match e {
+            AxError::NoMemory => OnProbeError::KError(rdrive::KError::NoMem),
+            _ => OnProbeError::Other(alloc::format!("{e:?}").into()),
+        })
+        .map(|v| unsafe { NonNull::new_unchecked(v.as_mut_ptr()) })
 }
 
 #[allow(dead_code)]

@@ -41,6 +41,7 @@ axlibc = { path = "ulib/axlibc" }
 arceos_api = { path = "api/arceos_api" }
 arceos_posix_api = { path = "api/arceos_posix_api" }
 axfeat = { path = "api/axfeat" }
+axklib = {path = "api/axklib"}
 
 axalloc = { path = "modules/axalloc" }
 axconfig = { path = "modules/axconfig" }
