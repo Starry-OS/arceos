@@ -17,8 +17,10 @@ members = [
     "modules/axsync",
     "modules/axtask",
     "modules/axipi",
+    "modules/axklib-impl",
 
     "api/axfeat",
+    "api/axklib",
 ]
 
 [workspace.package]
