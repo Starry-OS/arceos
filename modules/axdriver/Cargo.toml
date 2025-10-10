@@ -18,10 +18,10 @@ dyn = [
   "dep:rdrive",
   "dep:arm-gic-driver",
   "arm-gic-driver?/rdif",
-  "dep:axmm",
   "dep:rdif-intc",
   "dep:rdif-block",
   "dep:dma-api",
+  "dep:axklib",
 ]
 net = ["axdriver_net"]
 
@@ -44,6 +44,8 @@ default = ["bus-pci"]
 axalloc = {workspace = true, optional = true}
 axconfig = {workspace = true, optional = true}
 axdma = {workspace = true, optional = true}
+axklib = {workspace = true, optional = true}
+
 axdriver_base = {git = "https://github.com/arceos-org/axdriver_crates.git", tag = "v0.1.2"}
 axdriver_block = {git = "https://github.com/arceos-org/axdriver_crates.git", tag = "v0.1.2", optional = true}
 axdriver_display = {git = "https://github.com/arceos-org/axdriver_crates.git", tag = "v0.1.2", optional = true}
@@ -52,7 +54,6 @@ axdriver_pci = {git = "https://github.com/arceos-org/axdriver_crates.git", tag =
 axdriver_virtio = {git = "https://github.com/arceos-org/axdriver_crates.git", tag = "v0.1.2", optional = true}
 axerrno = "0.1"
 axhal = {workspace = true, optional = true}
-axmm = {workspace = true, optional = true}
 cfg-if = "1.0"
 crate_interface = "0.1.4"
 dma-api = {version = "0.5", features = ["alloc"], optional = true}

@@ -375,7 +375,7 @@ dependencies = [
  "axdriver_virtio",
  "axerrno",
  "axhal",
- "axmm",
+ "axklib",
  "cfg-if",
  "crate_interface",
  "dma-api",
