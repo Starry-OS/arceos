@@ -14,7 +14,7 @@
 
 use core::time::Duration;
 
-use axklib::{AxResult, IrqHandler, Klib, PhysAddr, VirtAddr, impl_trait};
+use axklib::{AxError, IrqHandler, Klib, PhysAddr, VirtAddr, impl_trait};
 
 struct KlibImpl;
 
@@ -24,7 +24,7 @@ impl_trait! {
         ///
         /// This function forwards the request to `axmm::iomap` and returns the
         /// resulting virtual address wrapped in an `AxResult`.
-        fn mem_iomap(addr: PhysAddr, size: usize) -> AxResult<VirtAddr> {
+        fn mem_iomap(addr: PhysAddr, size: usize) -> Result<VirtAddr, AxError> {
             axmm::iomap(addr, size)
         }
 

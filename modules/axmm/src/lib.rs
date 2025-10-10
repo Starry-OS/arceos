@@ -105,7 +105,7 @@ pub fn init_memory_management_secondary() {
 }
 
 /// Maps a physical memory region to virtual address space for device access.
-pub fn iomap(addr: PhysAddr, size: usize) -> AxResult<VirtAddr> {
+pub fn iomap(addr: PhysAddr, size: usize) -> Result<VirtAddr, AxError> {
     let virt = phys_to_virt(addr);
 
     let virt_aligned = virt.align_down_4k();

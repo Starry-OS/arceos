@@ -28,7 +28,7 @@
 
 use core::time::Duration;
 
-pub use axerrno::AxResult;
+pub use axerrno::AxError;
 /// Type alias for a simple IRQ handler function pointer.
 ///
 /// Handlers use the raw ABI required by the platform and take no arguments.
@@ -58,7 +58,7 @@ pub trait Klib {
     /// - The actual mapping behavior is platform-specific; callers should
     ///   treat this as an allocation-like operation and ensure the mapping
     ///   is later cleaned up if the platform/ABI requires it.
-    fn mem_iomap(addr: PhysAddr, size: usize) -> AxResult<VirtAddr>;
+    fn mem_iomap(addr: PhysAddr, size: usize) -> Result<VirtAddr, AxError>;
 
     /// Busy-wait the current execution context for the provided duration.
     ///
