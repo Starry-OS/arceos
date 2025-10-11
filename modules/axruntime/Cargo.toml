@@ -18,7 +18,7 @@ tls = ["axhal/tls", "axtask?/tls"]
 alloc = ["axalloc"]
 paging = ["axhal/paging", "axmm"]
 ipi = ["dep:axipi"]
-driver-dyn = ["axdriver/dyn"]
+driver-dyn = ["axdriver/dyn", "dep:axklib-impl"]
 
 multitask = ["axtask/multitask"]
 fs = ["axdriver", "axfs-ng", "axfs-ng-vfs"]
@@ -41,6 +41,7 @@ axlog = { workspace = true }
 axmm = { workspace = true, optional = true }
 axnet = { workspace = true, optional = true }
 axtask = { workspace = true, optional = true }
+axklib-impl = { workspace = true, optional = true }
 
 axfs-ng-vfs = { workspace = true, optional = true }
 axplat = { workspace = true }

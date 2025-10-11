@@ -22,6 +22,9 @@
 #[macro_use]
 extern crate axlog;
 
+#[cfg(feature = "driver-dyn")]
+extern crate axklib_impl;
+
 #[cfg(all(target_os = "none", not(test)))]
 mod lang_items;
 
