@@ -17,8 +17,10 @@ members = [
     "modules/axsync",
     "modules/axtask",
     "modules/axipi",
+    "modules/axklib-impl",
 
     "api/axfeat",
+    "api/axklib",
 ]
 
 [workspace.package]
@@ -39,6 +41,7 @@ axlibc = { path = "ulib/axlibc" }
 arceos_api = { path = "api/arceos_api" }
 arceos_posix_api = { path = "api/arceos_posix_api" }
 axfeat = { path = "api/axfeat" }
+axklib = {path = "api/axklib"}
 
 axalloc = { path = "modules/axalloc" }
 axconfig = { path = "modules/axconfig" }
@@ -55,6 +58,7 @@ axsync = { path = "modules/axsync" }
 axtask = { path = "modules/axtask" }
 axdma = { path = "modules/axdma" }
 axipi = { path = "modules/axipi" }
+axklib-impl = { path = "modules/axklib-impl" }
 
 allocator = { git = "https://github.com/Starry-OS/allocator.git", rev = "d5feebd" }
 axbacktrace = "0.1"

@@ -1,4 +1,9 @@
-use alloc::boxed::Box;
+#![allow(unused_imports)]
+
+use alloc::{boxed::Box, vec, vec::Vec};
+use core::{ops::Deref, ptr::NonNull};
+
+use rdrive::register::{DriverRegister, DriverRegisterSlice};
 
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -40,4 +45,20 @@ impl super::AxDeviceEnum {
     pub fn from_input(dev: impl InputDriverOps + 'static) -> Self {
         Self::Input(Box::new(dev))
     }
+}
+
+pub fn probe_all_devices() -> Vec<super::AxDeviceEnum> {
+    rdrive::probe_all(true).unwrap();
+    #[allow(unused_mut)]
+    let mut devices = Vec::new();
+    #[cfg(feature = "block")]
+    {
+        let ls = rdrive::get_list::<rdif_block::Block>();
+        for dev in ls {
+            devices.push(super::AxDeviceEnum::from_block(
+                crate::dyn_drivers::blk::Block::from(dev),
+            ));
+        }
+    }
+    devices
 }

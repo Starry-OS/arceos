@@ -22,6 +22,9 @@
 #[macro_use]
 extern crate axlog;
 
+#[cfg(feature = "driver-dyn")]
+extern crate axklib_impl;
+
 #[cfg(all(target_os = "none", not(test)))]
 mod lang_items;
 
@@ -184,6 +187,9 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
     #[cfg(feature = "paging")]
     axmm::init_memory_management();
 
+    #[cfg(feature = "driver-dyn")]
+    axdriver::setup(arg);
+
     info!("Initialize platform devices...");
     axhal::init_later(cpu_id, arg);
 
@@ -264,10 +270,19 @@ fn init_allocator() {
 
     let mut max_region_size = 0;
     let mut max_region_paddr = 0.into();
+    let mut use_next_free = false;
+
     for r in memory_regions() {
-        if r.flags.contains(MemRegionFlags::FREE) && r.size > max_region_size {
-            max_region_size = r.size;
-            max_region_paddr = r.paddr;
+        if r.name == ".bss" {
+            use_next_free = true;
+        } else if r.flags.contains(MemRegionFlags::FREE) {
+            if use_next_free {
+                max_region_paddr = r.paddr;
+                break;
+            } else if r.size > max_region_size {
+                max_region_size = r.size;
+                max_region_paddr = r.paddr;
+            }
         }
     }
     for r in memory_regions() {
