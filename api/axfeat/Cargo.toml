@@ -52,7 +52,7 @@ ext4 = ["axfs-ng/ext4"]
 
 # Networking
 net = ["alloc", "paging", "dep:axnet", "axruntime/net"]
-vsock = ["net", "axruntime/vsock"]
+vsock = ["net", "axnet/vsock", "axruntime/vsock"]
 
 # Display
 display = ["alloc", "paging", "dep:axdisplay", "axruntime/display"]

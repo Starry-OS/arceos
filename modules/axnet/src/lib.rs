@@ -32,6 +32,7 @@ pub(crate) mod state;
 pub mod tcp;
 pub mod udp;
 pub mod unix;
+#[cfg(feature = "vsock")]
 pub mod vsock;
 mod wrapper;
 
@@ -45,12 +46,13 @@ pub use socket::*;
 
 use crate::{
     consts::{GATEWAY, IP, IP_PREFIX},
-    device::{EthernetDevice, LoopbackDevice, register_vsock_device},
+    device::{EthernetDevice, LoopbackDevice},
     listen_table::ListenTable,
     router::{Router, Rule},
     service::Service,
     wrapper::SocketSetWrapper,
 };
+
 
 static LISTEN_TABLE: LazyInit<ListenTable> = LazyInit::new();
 static SOCKET_SET: LazyInit<SocketSetWrapper> = LazyInit::new();
@@ -115,7 +117,9 @@ pub fn init_network(mut net_devs: AxDeviceContainer<AxNetDevice>) {
 }
 
 /// Init vsock subsystem by vsock devices.
+#[cfg(feature = "vsock")]
 pub fn init_vsock(mut socket_devs: AxDeviceContainer<AxVsocketDevice>) {
+    use crate::device::register_vsock_device;
     info!("Initialize vsock subsystem...");
     if let Some(dev) = socket_devs.take_one() {
         info!("  use vsock 0: {:?}", dev.device_name());

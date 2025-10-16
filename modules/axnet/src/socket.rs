@@ -17,13 +17,16 @@ use crate::{
     tcp::TcpSocket,
     udp::UdpSocket,
     unix::{UnixSocket, UnixSocketAddr},
-    vsock::{VsockSocket, VsocketAddr},
 };
+
+#[cfg(feature = "vsock")]
+use crate::vsock::{VsockSocket, VsocketAddr};
 
 #[derive(Clone, Debug)]
 pub enum SocketAddrEx {
     Ip(SocketAddr),
     Unix(UnixSocketAddr),
+    #[cfg(feature = "vsock")]
     Vsock(VsocketAddr),
 }
 
@@ -32,6 +35,7 @@ impl SocketAddrEx {
         match self {
             SocketAddrEx::Ip(addr) => Ok(addr),
             SocketAddrEx::Unix(_) => Err(AxError::Other(LinuxError::EAFNOSUPPORT)),
+            #[cfg(feature = "vsock")]
             SocketAddrEx::Vsock(_) => Err(AxError::Other(LinuxError::EAFNOSUPPORT)),
         }
     }
@@ -40,10 +44,12 @@ impl SocketAddrEx {
         match self {
             SocketAddrEx::Unix(addr) => Ok(addr),
             SocketAddrEx::Ip(_) => Err(AxError::Other(LinuxError::EAFNOSUPPORT)),
+            #[cfg(feature = "vsock")]
             SocketAddrEx::Vsock(_) => Err(AxError::Other(LinuxError::EAFNOSUPPORT)),
         }
     }
 
+    #[cfg(feature = "vsock")]
     pub fn into_vsock(self) -> AxResult<VsocketAddr> {
         match self {
             SocketAddrEx::Ip(_) => Err(AxError::Other(LinuxError::EAFNOSUPPORT)),
@@ -161,6 +167,7 @@ pub enum Socket {
     Udp(UdpSocket),
     Tcp(TcpSocket),
     Unix(UnixSocket),
+    #[cfg(feature = "vsock")]
     Vsock(VsockSocket),
 }
 
@@ -170,6 +177,7 @@ impl Pollable for Socket {
             Socket::Tcp(tcp) => tcp.poll(),
             Socket::Udp(udp) => udp.poll(),
             Socket::Unix(unix) => unix.poll(),
+            #[cfg(feature = "vsock")]
             Socket::Vsock(vsock) => vsock.poll(),
         }
     }
@@ -179,6 +187,7 @@ impl Pollable for Socket {
             Socket::Tcp(tcp) => tcp.register(context, events),
             Socket::Udp(udp) => udp.register(context, events),
             Socket::Unix(unix) => unix.register(context, events),
+            #[cfg(feature = "vsock")]
             Socket::Vsock(vsock) => vsock.register(context, events),
         }
     }
