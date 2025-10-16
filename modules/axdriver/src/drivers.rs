@@ -60,7 +60,7 @@ register_input_driver!(
 );
 
 #[cfg(vsock_dev = "virtio-socket")]
-register_socket_driver!(
+register_vsock_driver!(
     <virtio::VirtIoSocket as VirtIoDevMeta>::Driver,
     <virtio::VirtIoSocket as VirtIoDevMeta>::Device
 );

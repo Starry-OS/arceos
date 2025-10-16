@@ -23,7 +23,7 @@ pub enum AxDeviceEnum {
     #[cfg(feature = "input")]
     Input(AxInputDevice),
     #[cfg(feature = "vsock")]
-    Vsock(AxVsocketDevice),
+    Vsock(AxVsockDevice),
 }
 
 impl BaseDriverOps for AxDeviceEnum {

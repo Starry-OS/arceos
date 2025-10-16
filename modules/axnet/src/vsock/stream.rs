@@ -12,7 +12,7 @@ use crate::{
     general::GeneralOptions,
     options::{Configurable, GetSocketOption, SetSocketOption},
     state::*,
-    vsock::{VsockTransport, VsockTransportOps, VsocketAddr},
+    vsock::{VsockTransport, VsockTransportOps, VsockAddr},
 };
 
 pub struct VsockStreamTransport {
@@ -48,7 +48,7 @@ impl Configurable for VsockStreamTransport {
 }
 
 impl VsockTransportOps for VsockStreamTransport {
-    fn bind(&self, mut local_addr: VsocketAddr) -> AxResult<()> {
+    fn bind(&self, mut local_addr: VsockAddr) -> AxResult<()> {
         self.state
             .lock(State::Idle)
             .map_err(|_| ax_err_type!(InvalidInput, "already bound"))?
@@ -89,7 +89,7 @@ impl VsockTransportOps for VsockStreamTransport {
         })
     }
 
-    fn accept(&self) -> AxResult<(VsockTransport, VsocketAddr)> {
+    fn accept(&self) -> AxResult<(VsockTransport, VsockAddr)> {
         if self.state.get() != State::Listening {
             ax_bail!(InvalidInput, "not listening");
         }
@@ -120,7 +120,7 @@ impl VsockTransportOps for VsockStreamTransport {
         })
     }
 
-    fn connect(&self, peer_addr: VsocketAddr) -> AxResult<()> {
+    fn connect(&self, peer_addr: VsockAddr) -> AxResult<()> {
         let guard = self.state.lock(State::Idle).map_err(|state| match state {
             State::Idle => unreachable!(),
             State::Listening => ax_err_type!(InvalidInput, "already listening"),
@@ -151,7 +151,7 @@ impl VsockTransportOps for VsockStreamTransport {
             };
             drop(existing_conn);
 
-            let local_addr = VsocketAddr {
+            let local_addr = VsockAddr {
                 cid: crate::device::vsock_guest_cid()?,
                 port: local_port,
             };
@@ -294,14 +294,14 @@ impl VsockTransportOps for VsockStreamTransport {
         Ok(())
     }
 
-    fn local_addr(&self) -> AxResult<Option<VsocketAddr>> {
+    fn local_addr(&self) -> AxResult<Option<VsockAddr>> {
         Ok(self
             .get_connection()
             .ok()
             .map(|conn| conn.lock().local_addr()))
     }
 
-    fn peer_addr(&self) -> AxResult<Option<VsocketAddr>> {
+    fn peer_addr(&self) -> AxResult<Option<VsockAddr>> {
         Ok(self
             .get_connection()
             .ok()

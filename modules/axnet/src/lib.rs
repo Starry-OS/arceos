@@ -118,7 +118,7 @@ pub fn init_network(mut net_devs: AxDeviceContainer<AxNetDevice>) {
 
 /// Init vsock subsystem by vsock devices.
 #[cfg(feature = "vsock")]
-pub fn init_vsock(mut socket_devs: AxDeviceContainer<AxVsocketDevice>) {
+pub fn init_vsock(mut socket_devs: AxDeviceContainer<AxVsockDevice>) {
     use crate::device::register_vsock_device;
     info!("Initialize vsock subsystem...");
     if let Some(dev) = socket_devs.take_one() {

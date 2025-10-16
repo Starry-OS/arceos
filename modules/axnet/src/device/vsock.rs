@@ -11,18 +11,18 @@ use lazy_static::lazy_static;
 use crate::{
     alloc::string::ToString,
     vsock::{
-        VsocketAddr,
+        VsockAddr,
         connection_manager::{ConnectionId, VSOCK_CONN_MANAGER},
     },
 };
 
 // we need a global and static only one vsock device
 lazy_static! {
-    static ref VSOCK_DEVICE: Mutex<Option<AxVsocketDevice>> = Mutex::new(None);
+    static ref VSOCK_DEVICE: Mutex<Option<AxVsockDevice>> = Mutex::new(None);
 }
 
 /// Registers a vsock device. Only one vsock device can be registered.
-pub fn register_vsock_device(dev: AxVsocketDevice) -> AxResult {
+pub fn register_vsock_device(dev: AxVsockDevice) -> AxResult {
     let mut guard = VSOCK_DEVICE.lock();
     if guard.is_some() {
         ax_bail!(AlreadyExists, "vsock device already registered");
@@ -170,7 +170,7 @@ fn handle_vsock_event(event: VsockDriverEvent) {
 
     match event {
         VsockDriverEvent::ConnectionRequest(local_port, peer_cid, peer_port) => {
-            let peer_addr = VsocketAddr {
+            let peer_addr = VsockAddr {
                 cid: peer_cid,
                 port: peer_port,
             };
@@ -196,7 +196,7 @@ fn handle_vsock_event(event: VsockDriverEvent) {
     }
 }
 
-pub fn vsock_listen(addr: VsocketAddr) -> AxResult<()> {
+pub fn vsock_listen(addr: VsockAddr) -> AxResult<()> {
     let mut guard = VSOCK_DEVICE.lock();
     let dev = guard.as_mut().ok_or(AxError::NotFound)?;
     dev.listen(addr.port);

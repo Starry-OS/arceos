@@ -20,14 +20,14 @@ use crate::{
 };
 
 #[cfg(feature = "vsock")]
-use crate::vsock::{VsockSocket, VsocketAddr};
+use crate::vsock::{VsockSocket, VsockAddr};
 
 #[derive(Clone, Debug)]
 pub enum SocketAddrEx {
     Ip(SocketAddr),
     Unix(UnixSocketAddr),
     #[cfg(feature = "vsock")]
-    Vsock(VsocketAddr),
+    Vsock(VsockAddr),
 }
 
 impl SocketAddrEx {
@@ -50,7 +50,7 @@ impl SocketAddrEx {
     }
 
     #[cfg(feature = "vsock")]
-    pub fn into_vsock(self) -> AxResult<VsocketAddr> {
+    pub fn into_vsock(self) -> AxResult<VsockAddr> {
         match self {
             SocketAddrEx::Ip(_) => Err(AxError::Other(LinuxError::EAFNOSUPPORT)),
             SocketAddrEx::Unix(_) => Err(AxError::Other(LinuxError::EAFNOSUPPORT)),

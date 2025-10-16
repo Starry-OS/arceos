@@ -91,7 +91,7 @@ pub use self::structs::AxDisplayDevice;
 #[cfg(feature = "net")]
 pub use self::structs::AxNetDevice;
 #[cfg(feature = "vsock")]
-pub use self::structs::AxVsocketDevice;
+pub use self::structs::AxVsockDevice;
 pub use self::structs::{AxDeviceContainer, AxDeviceEnum};
 
 /// A structure that contains all device drivers, organized by their category.
@@ -110,7 +110,7 @@ pub struct AllDevices {
     #[cfg(feature = "input")]
     pub input: AxDeviceContainer<AxInputDevice>,
     #[cfg(feature = "vsock")]
-    pub vsock: AxDeviceContainer<AxVsocketDevice>,
+    pub vsock: AxDeviceContainer<AxVsockDevice>,
 }
 
 impl AllDevices {

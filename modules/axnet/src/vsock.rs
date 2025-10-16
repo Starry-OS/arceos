@@ -18,14 +18,14 @@ use crate::{
 
 /// Virtio socket address.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct VsocketAddr {
+pub struct VsockAddr {
     /// Context ID
     pub cid: u32,
     /// Port number
     pub port: u32,
 }
 
-impl VsocketAddr {
+impl VsockAddr {
     pub fn to_device_addr(&self) -> AxResult<(u32, u32)> {
         Ok((self.cid, self.port))
     }
@@ -34,15 +34,15 @@ impl VsocketAddr {
 /// Abstract transport trait for Unix sockets.
 #[enum_dispatch]
 pub trait VsockTransportOps: Configurable + Pollable + Send + Sync {
-    fn bind(&self, local_addr: VsocketAddr) -> AxResult;
+    fn bind(&self, local_addr: VsockAddr) -> AxResult;
     fn listen(&self) -> AxResult;
-    fn connect(&self, peer_addr: VsocketAddr) -> AxResult;
-    fn accept(&self) -> AxResult<(VsockTransport, VsocketAddr)>;
+    fn connect(&self, peer_addr: VsockAddr) -> AxResult;
+    fn accept(&self) -> AxResult<(VsockTransport, VsockAddr)>;
     fn send(&self, src: &mut impl Buf, options: SendOptions) -> AxResult<usize>;
     fn recv(&self, dst: &mut impl BufMut, options: RecvOptions<'_>) -> AxResult<usize>;
     fn shutdown(&self, _how: Shutdown) -> AxResult;
-    fn local_addr(&self) -> AxResult<Option<VsocketAddr>>;
-    fn peer_addr(&self) -> AxResult<Option<VsocketAddr>>;
+    fn local_addr(&self) -> AxResult<Option<VsockAddr>>;
+    fn peer_addr(&self) -> AxResult<Option<VsockAddr>>;
 }
 
 #[enum_dispatch(Configurable, VsockTransportOps)]

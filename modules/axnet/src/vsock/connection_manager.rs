@@ -6,7 +6,7 @@ use axsync::Mutex;
 use lazy_static::lazy_static;
 use ringbuf::{HeapCons, HeapProd, HeapRb, traits::*};
 
-use super::VsocketAddr;
+use super::VsockAddr;
 
 pub const VSOCK_RX_BUFFER_SIZE: usize = 64 * 1024; // 64KB receive buffer
 const VSOCK_ACCEPT_QUEUE_SIZE: usize = 128; // accept queue size
@@ -50,8 +50,8 @@ pub enum ConnectionState {
 /// Connection
 pub struct Connection {
     state: ConnectionState,
-    local_addr: VsocketAddr,
-    peer_addr: Option<VsocketAddr>,
+    local_addr: VsockAddr,
+    peer_addr: Option<VsockAddr>,
 
     /// recv buffer read from driver
     rx_producer: HeapProd<u8>,
@@ -73,8 +73,8 @@ pub struct Connection {
 
 impl Connection {
     fn new(
-        local_addr: VsocketAddr,
-        peer_addr: Option<VsocketAddr>,
+        local_addr: VsockAddr,
+        peer_addr: Option<VsockAddr>,
         state: ConnectionState,
     ) -> Self {
         let rb = HeapRb::<u8>::new(VSOCK_RX_BUFFER_SIZE);
@@ -191,12 +191,12 @@ impl Connection {
     }
 
     #[inline]
-    pub fn local_addr(&self) -> VsocketAddr {
+    pub fn local_addr(&self) -> VsockAddr {
         self.local_addr
     }
 
     #[inline]
-    pub fn peer_addr(&self) -> Option<VsocketAddr> {
+    pub fn peer_addr(&self) -> Option<VsockAddr> {
         self.peer_addr
     }
 
@@ -264,11 +264,11 @@ impl AcceptQueue {
 pub struct ListenQueue {
     pub accept_queue: AcceptQueue,
     pub wakers: PollSet,
-    pub local_addr: VsocketAddr,
+    pub local_addr: VsockAddr,
 }
 
 impl ListenQueue {
-    pub fn new(local_addr: VsocketAddr) -> Self {
+    pub fn new(local_addr: VsockAddr) -> Self {
         Self {
             accept_queue: AcceptQueue::new(),
             wakers: PollSet::new(),
@@ -336,7 +336,7 @@ impl VsockConnectionManager {
     }
 
     /// create a listen queue
-    pub fn listen(&mut self, local_addr: VsocketAddr) -> AxResult<()> {
+    pub fn listen(&mut self, local_addr: VsockAddr) -> AxResult<()> {
         if self.listen_queues.contains_key(&local_addr.port) {
             ax_bail!(AddressInUse, "port already in use");
         }
@@ -361,7 +361,7 @@ impl VsockConnectionManager {
     }
 
     /// accept a connection
-    pub fn accept(&mut self, port: u32) -> AxResult<(ConnectionId, VsocketAddr)> {
+    pub fn accept(&mut self, port: u32) -> AxResult<(ConnectionId, VsockAddr)> {
         let queue = self.listen_queues.get(&port).ok_or(AxError::InvalidInput)?;
 
         let conn_id = queue.lock().accept_queue.pop().ok_or(AxError::WouldBlock)?;
@@ -378,8 +378,8 @@ impl VsockConnectionManager {
     pub fn create_connection(
         &mut self,
         conn_id: ConnectionId,
-        local_addr: VsocketAddr,
-        peer_addr: Option<VsocketAddr>,
+        local_addr: VsockAddr,
+        peer_addr: Option<VsockAddr>,
         state: ConnectionState,
     ) -> Arc<Mutex<Connection>> {
         let conn = Connection::new(local_addr, peer_addr, state);
@@ -418,7 +418,7 @@ impl VsockConnectionManager {
     pub fn on_connection_request(
         &mut self,
         local_port: u32,
-        peer_addr: VsocketAddr,
+        peer_addr: VsockAddr,
     ) -> AxResult<()> {
         let queue = self
             .listen_queues

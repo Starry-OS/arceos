@@ -68,7 +68,7 @@ cfg_if! {
             type Device = axdriver_virtio::VirtIoSocketDev<VirtIoHalImpl, VirtIoTransport>;
 
             fn try_new(transport: VirtIoTransport, _irq:  Option<u32>) -> DevResult<AxDeviceEnum> {
-                Ok(AxDeviceEnum::from_socket(Self::Device::try_new(transport)?))
+                Ok(AxDeviceEnum::from_vsock(Self::Device::try_new(transport)?))
             }
         }
     }
