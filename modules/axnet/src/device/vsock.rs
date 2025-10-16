@@ -3,10 +3,10 @@ use core::{
     time::Duration,
 };
 
-use axtask::future::{block_on, interruptible};
 use axdriver::prelude::*;
 use axerrno::{AxError, AxResult, LinuxError, ax_bail};
 use axsync::Mutex;
+use axtask::future::{block_on, interruptible};
 
 use crate::{
     alloc::string::ToString,
