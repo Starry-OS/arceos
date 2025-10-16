@@ -140,7 +140,7 @@ impl Connection {
             if written < data.len() {
                 let dropped = data.len() - written;
                 self.dropped_bytes += dropped;
-                warn!(
+                info!(
                     "Vsock connection {:?} rx buffer full, dropped {} bytes",
                     (self.local_addr, self.peer_addr),
                     dropped
@@ -149,7 +149,7 @@ impl Connection {
             written
         } else {
             self.dropped_bytes += data.len();
-            warn!(
+            info!(
                 "Vsock connection {:?} rx buffer full, dropped {} bytes",
                 (self.local_addr, self.peer_addr),
                 data.len()
@@ -349,7 +349,7 @@ impl VsockConnectionManager {
     /// stop listening
     pub fn unlisten(&mut self, port: u32) {
         self.listen_queues.remove(&port);
-        info!("Vsock unlisten on port {}", port);
+        debug!("Vsock unlisten on port {}", port);
     }
 
     /// check if port accept
@@ -385,12 +385,12 @@ impl VsockConnectionManager {
         let conn = Connection::new(local_addr, peer_addr, state);
         let conn = Arc::new(Mutex::new(conn));
         if self.connections.contains_key(&conn_id) {
-            warn!("Connection {:?} already exists, overwriting", conn_id);
+            info!("Connection {:?} already exists, overwriting", conn_id);
         } else {
             crate::device::start_vsock_poll();
         }
         self.connections.insert(conn_id, conn.clone());
-        info!(
+        debug!(
             "Created connection {:?}: local={:?}, peer={:?}",
             conn_id, local_addr, peer_addr
         );
@@ -407,7 +407,7 @@ impl VsockConnectionManager {
         if let Some(conn) = self.connections.remove(conn_id) {
             let conn = conn.lock();
             crate::device::stop_vsock_poll();
-            info!(
+            debug!(
                 "Removed connection {:?}: rx={} bytes, tx={} bytes, dropped={} bytes",
                 conn_id, conn.rx_bytes, conn.tx_bytes, conn.dropped_bytes
             );
@@ -446,7 +446,7 @@ impl VsockConnectionManager {
         // 加入 accept 队列
         let mut queue_guard = queue.lock();
         if let Err(_) = queue_guard.accept_queue.push(conn_id) {
-            warn!(
+            info!(
                 "Accept queue full for port {}, dropping connection from {:?}",
                 local_port, peer_addr
             );
@@ -459,7 +459,7 @@ impl VsockConnectionManager {
         queue_guard.wake();
         drop(queue_guard);
 
-        info!(
+        trace!(
             "New connection request from {:?} on port {}",
             peer_addr, local_port
         );
@@ -480,7 +480,7 @@ impl VsockConnectionManager {
             conn_guard.wake_rx();
         }
 
-        debug!(
+        trace!(
             "Received {} bytes for connection {:?} (written={}, buffer_used={}/{})",
             data.len(),
             conn_id,
@@ -499,7 +499,7 @@ impl VsockConnectionManager {
             conn_guard.rx_closed = true;
             conn_guard.tx_closed = true;
             conn_guard.wake_rx();
-            debug!("Connection {:?} disconnected", conn_id);
+            trace!("Connection {:?} disconnected", conn_id);
         }
         Ok(())
     }
@@ -510,7 +510,7 @@ impl VsockConnectionManager {
             let mut conn_guard = conn.lock();
             conn_guard.state = ConnectionState::Connected;
             conn_guard.wake_connect();
-            debug!("Connection {:?} established", conn_id);
+            trace!("Connection {:?} established", conn_id);
         }
         Ok(())
     }

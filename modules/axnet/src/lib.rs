@@ -127,7 +127,7 @@ pub fn init_vsock(mut socket_devs: AxDeviceContainer<AxVsockDevice>) {
             warn!("Failed to initialize vsock device: {:?}", e);
         }
     } else {
-        warn!("No vsock device found!");
+        info!("No vsock device found!");
     }
 }
 

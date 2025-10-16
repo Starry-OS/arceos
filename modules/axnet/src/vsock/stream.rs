@@ -63,7 +63,7 @@ impl VsockTransportOps for VsockStreamTransport {
 
                 *self.conn_id.lock() = Some(conn_id);
                 *self.connection.lock() = Some(conn);
-                debug!("Vsock binding to {:?}", local_addr);
+                trace!("Vsock binding to {:?}", local_addr);
                 Ok(())
             })?;
         Ok(())
@@ -84,7 +84,7 @@ impl VsockTransportOps for VsockStreamTransport {
             crate::device::vsock_listen(local_addr)?;
             // set state
             conn.lock().set_state(ConnectionState::Listening);
-            debug!("Vsock listening on {:?}", local_addr);
+            trace!("Vsock listening on {:?}", local_addr);
             Ok(())
         })
     }
@@ -254,7 +254,7 @@ impl VsockTransportOps for VsockStreamTransport {
             };
 
             if count > 0 {
-                debug!(
+                trace!(
                     "Recv {} bytes from connection (buffer_remaining={}/{})",
                     count,
                     conn_guard.rx_buffer_used(),

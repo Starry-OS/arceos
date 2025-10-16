@@ -81,11 +81,11 @@ pub fn start_vsock_poll() {
     let mut count = POLL_REF_COUNT.lock();
     *count += 1;
     let new_count = *count;
-    info!("start_vsock_poll: ref_count -> {}", new_count);
+    debug!("start_vsock_poll: ref_count -> {}", new_count);
     if new_count == 1 {
         if !POLL_TASK_RUNNING.swap(true, Ordering::SeqCst) {
             drop(count);
-            info!("Starting vsock poll task");
+            debug!("Starting vsock poll task");
             axtask::spawn(vsock_poll_loop, "vsock-poll".to_string());
         } else {
             warn!("Poll task already running!");
@@ -96,29 +96,25 @@ pub fn start_vsock_poll() {
 pub fn stop_vsock_poll() {
     let mut count = POLL_REF_COUNT.lock();
     if *count == 0 {
+        // this should not happen, log a warning
         warn!("stop_vsock_poll called but ref_count already 0");
         return;
     }
     *count -= 1;
     let new_count = *count;
-    info!("stop_vsock_poll: ref_count -> {}", new_count);
-    if new_count == 0 {
-        info!("Last connection closed, poll task will exit");
-    }
+    debug!("stop_vsock_poll: ref_count -> {}", new_count);
 }
 
 fn vsock_poll_loop() {
-    info!("Vsock poll task started");
     loop {
         let ref_count = *POLL_REF_COUNT.lock();
         if ref_count == 0 {
             POLL_TASK_RUNNING.store(false, Ordering::SeqCst);
-            info!("Vsock poll task exiting (no active connections)");
+            debug!("Vsock poll task exiting (no active connections)");
             break;
         }
         let _ = block_on(interruptible(poll_interfaces_adaptive()));
     }
-    info!("Vsock poll task stopped");
 }
 
 async fn poll_interfaces_adaptive() -> AxResult<()> {
@@ -134,7 +130,7 @@ async fn poll_interfaces_adaptive() -> AxResult<()> {
 
     let (idle_count, interval_us) = POLL_FREQUENCY.stats();
     if idle_count > 0 && idle_count % 10 == 0 {
-        debug!(
+        trace!(
             "Poll frequency: idle_count={}, interval={}μs",
             idle_count, interval_us
         );
@@ -156,7 +152,7 @@ fn poll_vsock_interfaces() -> AxResult<bool> {
                 handle_vsock_event(event);
             }
             Err(e) => {
-                warn!("Failed to poll vsock event: {:?}", e);
+                info!("Failed to poll vsock event: {:?}", e);
                 break;
             }
         }
