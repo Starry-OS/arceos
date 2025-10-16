@@ -3,10 +3,10 @@ use core::{
     time::Duration,
 };
 
+use axtask::future::{block_on, interruptible};
 use axdriver::prelude::*;
 use axerrno::{AxError, AxResult, LinuxError, ax_bail};
 use axsync::Mutex;
-use lazy_static::lazy_static;
 
 use crate::{
     alloc::string::ToString,
@@ -17,9 +17,7 @@ use crate::{
 };
 
 // we need a global and static only one vsock device
-lazy_static! {
-    static ref VSOCK_DEVICE: Mutex<Option<AxVsockDevice>> = Mutex::new(None);
-}
+static VSOCK_DEVICE: Mutex<Option<AxVsockDevice>> = Mutex::new(None);
 
 /// Registers a vsock device. Only one vsock device can be registered.
 pub fn register_vsock_device(dev: AxVsockDevice) -> AxResult {
@@ -32,11 +30,7 @@ pub fn register_vsock_device(dev: AxVsockDevice) -> AxResult {
     Ok(())
 }
 
-use axtask::future::{block_on, interruptible};
-
-lazy_static! {
-    static ref POLL_REF_COUNT: Mutex<usize> = Mutex::new(0);
-}
+static POLL_REF_COUNT: Mutex<usize> = Mutex::new(0);
 static POLL_TASK_RUNNING: AtomicBool = AtomicBool::new(false);
 static POLL_FREQUENCY: PollFrequencyController = PollFrequencyController::new();
 

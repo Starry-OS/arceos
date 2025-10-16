@@ -3,7 +3,6 @@ use alloc::{collections::BTreeMap, sync::Arc};
 use axerrno::{AxError, AxResult, ax_bail};
 use axpoll::PollSet;
 use axsync::Mutex;
-use lazy_static::lazy_static;
 use ringbuf::{HeapCons, HeapProd, HeapRb, traits::*};
 
 use super::VsockAddr;
@@ -296,7 +295,7 @@ impl VsockConnectionManager {
     const EPHEMERAL_PORT_END: u32 = 0xffff;
     const EPHEMERAL_PORT_START: u32 = 0xc000;
 
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             connections: BTreeMap::new(),
             listen_queues: BTreeMap::new(),
@@ -543,10 +542,7 @@ pub struct VsockStats {
     pub total_dropped_bytes: usize,
 }
 
-lazy_static! {
-    pub static ref VSOCK_CONN_MANAGER: Mutex<VsockConnectionManager> =
-        Mutex::new(VsockConnectionManager::new());
-}
+pub static VSOCK_CONN_MANAGER: Mutex<VsockConnectionManager> = Mutex::new(VsockConnectionManager::new());
 
 /// for debug
 #[allow(dead_code)]
