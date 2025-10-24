@@ -53,11 +53,7 @@ pub fn alloc_frames(
     kind: UsageKind,
 ) -> AxResult<PhysAddr> {
     let page_size = size as usize;
-    let vaddr = VirtAddr::from(
-        global_allocator()
-            .alloc_pages(nums, page_size, kind)
-            .map_err(alloc_to_linux_error)?,
-    );
+    let vaddr = VirtAddr::from(global_allocator().alloc_pages(nums, page_size, kind)?);
     if zeroed {
         unsafe { core::ptr::write_bytes(vaddr.as_mut_ptr(), 0, page_size * nums) };
     }

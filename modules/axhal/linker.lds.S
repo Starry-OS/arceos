@@ -161,8 +161,10 @@ SECTIONS {
     linkm2_PAGE_FAULT : { *(linkm2_PAGE_FAULT) }
     linkme_SYSCALL : { *(linkme_SYSCALL) }
     linkm2_SYSCALL : { *(linkm2_SYSCALL) }
-	linkme_BREAK_HANDLER : { *(linkme_BREAK_HANDLER) }
-	linkm2_BREAK_HANDLER : { *(linkm2_BREAK_HANDLER) }
+    linkme_BREAK_HANDLER : { *(linkme_BREAK_HANDLER) }
+    linkm2_BREAK_HANDLER : { *(linkm2_BREAK_HANDLER) }
+    linkme_DEBUG_HANDLER : { *(linkme_DEBUG_HANDLER) }
+    linkm2_DEBUG_HANDLER : { *(linkm2_DEBUG_HANDLER) }
     scope_local : { *(scope_local) }
 }
 INSERT AFTER .tbss;
