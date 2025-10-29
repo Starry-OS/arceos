@@ -172,7 +172,7 @@ impl AddrSpace {
         while let Some(area) = self.areas.find(start) {
             let range = VirtAddrRange::new(start, area.end().min(end));
             area.backend()
-                .populate(range, area.flags(), access_flags, &mut modify)?;
+                .populate(area, range, area.flags(), access_flags, &mut modify)?;
             start = area.end();
             assert!(start.is_aligned_4k());
             if start >= end {
@@ -325,6 +325,7 @@ impl AddrSpace {
             if flags.contains(access_flags) {
                 let page_size = area.backend().page_size();
                 let populate_result = area.backend().populate(
+                    area,
                     VirtAddrRange::from_start_size(vaddr.align_down(page_size), page_size as _),
                     flags,
                     access_flags,
