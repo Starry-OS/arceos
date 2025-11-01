@@ -29,7 +29,6 @@ rtc = ["dep:chrono"]
 
 [dependencies]
 axalloc = { workspace = true, optional = true }
-axbacktrace = { workspace = true }
 axconfig = { workspace = true }
 axdisplay = { workspace = true, optional = true }
 axinput = { workspace = true, optional = true }
