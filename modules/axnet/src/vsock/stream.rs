@@ -12,7 +12,7 @@ use crate::{
     general::GeneralOptions,
     options::{Configurable, GetSocketOption, SetSocketOption},
     state::*,
-    vsock::{VsockTransport, VsockTransportOps, VsockAddr},
+    vsock::{VsockAddr, VsockTransport, VsockTransportOps},
 };
 
 pub struct VsockStreamTransport {
@@ -227,7 +227,9 @@ impl VsockTransportOps for VsockStreamTransport {
             }
 
             // should allow read when connection is closed, to read remaining data
-            if conn_guard.state() != ConnectionState::Connected && conn_guard.state() != ConnectionState::Closed {
+            if conn_guard.state() != ConnectionState::Connected
+                && conn_guard.state() != ConnectionState::Closed
+            {
                 return Err(AxError::NotConnected);
             }
 
