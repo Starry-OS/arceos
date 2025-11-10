@@ -246,6 +246,11 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
         core::hint::spin_loop();
     }
 
+    #[cfg(target_arch = "riscv64")]
+    unsafe {
+        use riscv::register::sstatus;
+        sstatus::set_sum();
+    }
     unsafe { main() };
 
     #[cfg(feature = "multitask")]
