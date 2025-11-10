@@ -6,7 +6,7 @@ mod util;
 use axdriver::{AxBlockDevice, prelude::BlockDriverOps};
 pub use fs::*;
 pub use inode::*;
-use lwext4_rust::{BlockDevice, EXT4_DEV_BSIZE, Ext4Error, Ext4Result, ffi::EIO};
+use lwext4_rust::{BlockDevice, Ext4Error, Ext4Result, ffi::EIO};
 
 pub(crate) struct Ext4Disk(AxBlockDevice);
 
