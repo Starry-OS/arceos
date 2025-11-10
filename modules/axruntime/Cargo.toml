@@ -48,3 +48,6 @@ chrono = { workspace = true, optional = true }
 crate_interface = { workspace = true }
 indoc = "2"
 percpu = { workspace = true, optional = true }
+
+[target.'cfg(any(target_arch = "riscv32", target_arch = "riscv64"))'.dependencies]
+riscv = "0.14"

@@ -51,6 +51,14 @@ pub fn rust_main_secondary(cpu_id: usize) -> ! {
     #[cfg(feature = "ipi")]
     axipi::init();
 
+    #[cfg(target_arch = "riscv64")]
+    {
+        use riscv::register::sstatus;
+        unsafe {
+            sstatus::set_sum();
+        }
+    }
+
     info!("Secondary CPU {:x} init OK.", cpu_id);
     super::INITED_CPUS.fetch_add(1, Ordering::Release);
 

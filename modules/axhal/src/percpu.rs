@@ -80,6 +80,10 @@ pub(crate) fn init_primary(cpu_id: usize) {
         CPU_ID.write_current_raw(cpu_id);
         IS_BSP.write_current_raw(true);
     }
+    #[cfg(all(feature = "irq", target_arch = "riscv64"))]
+    {
+        axplat_riscv64_qemu_virt::register_this_cpu_id(this_cpu_id);
+    }
 }
 
 #[allow(dead_code)]
@@ -88,5 +92,9 @@ pub(crate) fn init_secondary(cpu_id: usize) {
     unsafe {
         CPU_ID.write_current_raw(cpu_id);
         IS_BSP.write_current_raw(false);
+    }
+    #[cfg(all(feature = "irq", target_arch = "riscv64"))]
+    {
+        axplat_riscv64_qemu_virt::register_this_cpu_id(this_cpu_id);
     }
 }
