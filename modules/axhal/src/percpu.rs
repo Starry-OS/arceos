@@ -1,26 +1,9 @@
 //! CPU-local data structures.
 
-#[percpu::def_percpu]
-static CPU_ID: usize = 0;
-
-#[percpu::def_percpu]
-static IS_BSP: bool = false;
+pub use axplat::hart::{this_cpu_id, this_cpu_is_bsp};
 
 #[percpu::def_percpu]
 static CURRENT_TASK_PTR: usize = 0;
-
-/// Returns the ID of the current CPU.
-#[inline]
-pub fn this_cpu_id() -> usize {
-    CPU_ID.read_current()
-}
-
-/// Returns whether the current CPU is the primary CPU (aka the bootstrap
-/// processor or BSP)
-#[inline]
-pub fn this_cpu_is_bsp() -> bool {
-    IS_BSP.read_current()
-}
 
 /// Gets the pointer to the current task with preemption-safety.
 ///
@@ -76,17 +59,11 @@ pub unsafe fn set_current_task_ptr<T>(ptr: *const T) {
 pub(crate) fn init_primary(cpu_id: usize) {
     percpu::init();
     percpu::init_percpu_reg(cpu_id);
-    unsafe {
-        CPU_ID.write_current_raw(cpu_id);
-        IS_BSP.write_current_raw(true);
-    }
+    axplat::hart::init(cpu_id, true);
 }
 
 #[allow(dead_code)]
 pub(crate) fn init_secondary(cpu_id: usize) {
     percpu::init_percpu_reg(cpu_id);
-    unsafe {
-        CPU_ID.write_current_raw(cpu_id);
-        IS_BSP.write_current_raw(false);
-    }
+    axplat::hart::init(cpu_id, false);
 }
