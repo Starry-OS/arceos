@@ -10,6 +10,7 @@ use axfs_ng::{CachedFile, FileFlags};
 use axhal::paging::{MappingFlags, PageSize, PageTableMut, PagingError};
 use axsync::Mutex;
 use memory_addr::{PAGE_SIZE_4K, VirtAddr, VirtAddrRange};
+use memory_set::MemoryArea;
 
 use crate::{
     AddrSpace,
@@ -138,6 +139,7 @@ impl BackendOps for FileBackend {
 
     fn populate(
         &self,
+        _area: &MemoryArea<Backend>,
         range: VirtAddrRange,
         flags: MappingFlags,
         access_flags: MappingFlags,

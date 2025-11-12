@@ -10,7 +10,7 @@ use axhal::{
 use axsync::Mutex;
 use enum_dispatch::enum_dispatch;
 use memory_addr::{PAGE_SIZE_4K, PhysAddr, VirtAddr, VirtAddrRange};
-use memory_set::MappingBackend;
+use memory_set::{MappingBackend, MemoryArea};
 
 pub mod cow;
 pub mod file;
@@ -74,6 +74,7 @@ pub trait BackendOps {
     /// Populate a memory region. Returns number of pages populated.
     fn populate(
         &self,
+        _area: &MemoryArea<Backend>,
         _range: VirtAddrRange,
         _flags: MappingFlags,
         _access_flags: MappingFlags,

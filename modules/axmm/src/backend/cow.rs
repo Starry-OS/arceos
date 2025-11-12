@@ -10,6 +10,7 @@ use axhal::{
 use axsync::Mutex;
 use kspin::SpinNoIrq;
 use memory_addr::{PhysAddr, VirtAddr, VirtAddrRange};
+use memory_set::MemoryArea;
 
 use crate::{
     AddrSpace,
@@ -142,11 +143,13 @@ impl BackendOps for CowBackend {
 
     fn populate(
         &self,
+        area: &MemoryArea<Backend>,
         range: VirtAddrRange,
         flags: MappingFlags,
         access_flags: MappingFlags,
         pt: &mut PageTableMut,
     ) -> AxResult<(usize, Option<Box<dyn FnOnce(&mut AddrSpace)>>)> {
+        const PREFETCH_PAGES: usize = 3;
         let mut pages = 0;
         for addr in pages_in(range, self.size)? {
             match pt.query(addr) {
@@ -163,6 +166,29 @@ impl BackendOps for CowBackend {
                 Err(PagingError::NotMapped) => {
                     self.alloc_new_at(addr, flags, pt)?;
                     pages += 1;
+                    // prefetch at most PREFETCH_PAGES pages ahead
+                    let va_range = area.va_range();
+                    for addr in pages_in(
+                        VirtAddrRange::from_start_size(
+                            addr + self.size as usize,
+                            PREFETCH_PAGES * self.size as usize,
+                        ),
+                        self.size,
+                    )? {
+                        if !va_range.contains(addr) {
+                            break;
+                        }
+                        match pt.query(addr) {
+                            Ok(_) => {
+                                // Already mapped.
+                            }
+                            Err(PagingError::NotMapped) => {
+                                self.alloc_new_at(addr, flags, pt)?;
+                                pages += 1;
+                            }
+                            Err(_) => break,
+                        }
+                    }
                 }
                 Err(_) => return Err(AxError::BadAddress),
             }
