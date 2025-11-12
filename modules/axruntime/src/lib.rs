@@ -18,7 +18,7 @@
 
 #![cfg_attr(not(test), no_std)]
 #![feature(doc_auto_cfg)]
-
+#![feature(linkage)]
 #[macro_use]
 extern crate axlog;
 
@@ -122,7 +122,6 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
             target = {}
             build_mode = {}
             log_level = {}
-            backtrace = {}
             smp = {}
         "},
         axconfig::ARCH,
@@ -130,7 +129,6 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
         option_env!("AX_TARGET").unwrap_or(""),
         option_env!("AX_MODE").unwrap_or(""),
         option_env!("AX_LOG").unwrap_or(""),
-        axbacktrace::is_enabled(),
         axconfig::plat::CPU_NUM,
     );
     #[cfg(feature = "rtc")]
@@ -158,28 +156,6 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
 
     #[cfg(feature = "alloc")]
     init_allocator();
-
-    {
-        use core::ops::Range;
-
-        unsafe extern "C" {
-            safe static _stext: [u8; 0];
-            safe static _etext: [u8; 0];
-            safe static _edata: [u8; 0];
-        }
-
-        let ip_range = Range {
-            start: _stext.as_ptr() as usize,
-            end: _etext.as_ptr() as usize,
-        };
-
-        let fp_range = Range {
-            start: _edata.as_ptr() as usize,
-            end: usize::MAX,
-        };
-
-        axbacktrace::init(ip_range, fp_range);
-    }
 
     #[cfg(feature = "paging")]
     axmm::init_memory_management();
