@@ -1,6 +1,6 @@
 //! CPU-local data structures.
 
-pub use axplat::hart::{this_cpu_id, this_cpu_is_bsp};
+pub use axplat::cpu::{this_cpu_id, this_cpu_is_bsp};
 
 #[percpu::def_percpu]
 static CURRENT_TASK_PTR: usize = 0;
