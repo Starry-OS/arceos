@@ -11,14 +11,21 @@ endif
 build_args-release := --release
 
 build_args := \
-  -Z unstable-options \
+  -Zunstable-options \
+  -Zbuild-std=core,alloc,compiler_builtins \
+  -Zbuild-std-features=compiler-builtins-mem \
   --target $(TARGET) \
   --target-dir $(TARGET_DIR) \
   $(build_args-$(MODE)) \
   $(verbose)
 
 RUSTFLAGS := -A unsafe_op_in_unsafe_fn
-RUSTFLAGS_LINK_ARGS := -C link-arg=-T$(LD_SCRIPT) -C link-arg=-no-pie -C link-arg=-znostart-stop-gc
+RUSTFLAGS_LINK_ARGS := \
+  -C link-arg=-T$(LD_SCRIPT) \
+  -C link-arg=-no-pie \
+  -C link-arg=-znostart-stop-gc \
+  -C no-redzone=y
+
 RUSTDOCFLAGS := -Z unstable-options --enable-index-page -D rustdoc::broken_intra_doc_links
 
 ifeq ($(MAKECMDGOALS), doc_check_missing)

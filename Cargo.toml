@@ -56,7 +56,7 @@ axdma = { path = "modules/axdma" }
 axipi = { path = "modules/axipi" }
 
 allocator = { git = "https://github.com/Starry-OS/allocator.git", rev = "918365e" }
-axbacktrace = "0.1"
+axbacktrace = { git = "https://github.com/Starry-OS/axbacktrace", rev = "e59ad73" }
 axcpu = "0.2"
 axerrno = "0.1"
 axfs-ng-vfs = "0.1"
