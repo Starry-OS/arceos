@@ -59,11 +59,11 @@ pub unsafe fn set_current_task_ptr<T>(ptr: *const T) {
 pub(crate) fn init_primary(cpu_id: usize) {
     percpu::init();
     percpu::init_percpu_reg(cpu_id);
-    axplat::hart::init(cpu_id, true);
+    axplat::cpu::init(cpu_id, true);
 }
 
 #[allow(dead_code)]
 pub(crate) fn init_secondary(cpu_id: usize) {
     percpu::init_percpu_reg(cpu_id);
-    axplat::hart::init(cpu_id, false);
+    axplat::cpu::init(cpu_id, false);
 }
