@@ -25,15 +25,15 @@ RUN wget https://musl.cc/aarch64-linux-musl-cross.tgz \
     && tar zxf loongarch64-linux-musl-cross.tgz \
     && rm -f *.tgz
 
-RUN wget https://download.qemu.org/qemu-9.2.4.tar.xz \
-    && tar xf qemu-9.2.4.tar.xz \
-    && cd qemu-9.2.4 \
-    && ./configure --prefix=/qemu-bin-9.2.4 \
+RUN wget https://download.qemu.org/qemu-10.1.2.tar.xz \
+    && tar xf qemu-10.1.2.tar.xz \
+    && cd qemu-10.1.2 \
+    && ./configure --prefix=/qemu-bin-10.1.2 \
         --target-list=loongarch64-softmmu,riscv64-softmmu,aarch64-softmmu,x86_64-softmmu \
         --enable-gcov --enable-debug --enable-slirp \
     && make -j$(nproc) \
     && make install
-RUN rm -rf qemu-9.2.4 qemu-9.2.4.tar.xz
+RUN rm -rf qemu-10.1.2 qemu-10.1.2.tar.xz
 
 ENV PATH="/x86_64-linux-musl-cross/bin:/aarch64-linux-musl-cross/bin:/riscv64-linux-musl-cross/bin:/loongarch64-linux-musl-cross/bin:$PATH"
-ENV PATH="/qemu-bin-9.2.4/bin:$PATH"
+ENV PATH="/qemu-bin-10.1.2/bin:$PATH"
