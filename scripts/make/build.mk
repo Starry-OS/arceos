@@ -33,8 +33,8 @@ else ifneq ($(filter $(or $(MAKECMDGOALS), $(.DEFAULT_GOAL)), all build run just
     $(if $(V), $(info CFLAGS: "$(CFLAGS)") $(info LDFLAGS: "$(LDFLAGS)"))
   else ifeq ($(APP_TYPE), rust)
     RUSTFLAGS += $(RUSTFLAGS_LINK_ARGS)
-    ifeq ($(BACKTRACE), y)
-      RUSTFLAGS += -C force-frame-pointers -C debuginfo=2 -C strip=none
+    ifneq ($(ARCH), loongarch64)
+        RUSTFLAGS += -Cforce-unwind-tables=yes -Cpanic=unwind -Clink-arg=--eh-frame-hdr
     endif
     ifeq ($(MYPLAT), axplat-loongarch64-2k1000la)
       RUSTFLAGS += -C target-feature=-ual
@@ -55,9 +55,6 @@ ifeq ($(APP_TYPE), rust)
 	@cp $(rust_elf) $(OUT_ELF)
 else ifeq ($(APP_TYPE), c)
 	$(call cargo_build,ulib/axlibc,$(AX_FEAT) $(LIB_FEAT))
-endif
-ifeq ($(BACKTRACE), y)
-	$(call run_cmd,./scripts/make/dwarf.sh,$(OUT_ELF) $(OBJCOPY))
 endif
 
 $(OUT_DIR):

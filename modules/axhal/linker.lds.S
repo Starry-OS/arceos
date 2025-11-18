@@ -10,10 +10,14 @@ SECTIONS
 
     .text : ALIGN(4K) {
         _stext = .;
+        ; for unwind
+        __executable_start = .;
         *(.text.boot)
         *(.text .text.*)
         . = ALIGN(4K);
         _etext = .;
+        ; for unwind
+        __etext = .;
     }
 
     _srodata = .;
@@ -21,6 +25,20 @@ SECTIONS
         *(.rodata .rodata.*)
         *(.srodata .srodata.*)
         *(.sdata2 .sdata2.*)
+    }
+
+    .gcc_except_table : ALIGN(4K){
+        *(.gcc_except_table .gcc_except_table.*)
+    }
+
+    .eh_frame_hdr : ALIGN(4K){
+        PROVIDE(__GNU_EH_FRAME_HDR = .);
+        KEEP(*(.eh_frame_hdr .eh_frame_hdr.*))
+    }
+
+    .eh_frame : ALIGN(4K){
+        PROVIDE(__eh_frame = .);
+        KEEP(*(.eh_frame .eh_frame.*))
     }
 
     .init_array : ALIGN(0x10) {
