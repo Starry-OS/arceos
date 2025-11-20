@@ -1,19 +1,9 @@
-FROM rust:slim
+FROM rust:alpine
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget \
-    gnupg \
-    ca-certificates
-
-RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg
-
-RUN echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm main" >> /etc/apt/sources.list
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libclang-19-dev wget make python3 \
-        xz-utils python3-venv ninja-build bzip2 meson \
-        pkg-config libglib2.0-dev git libslirp-dev \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache \
+    build-base qemu-system-x86_64 qemu-system-loongarch64 \
+    qemu-system-riscv64 qemu-system-aarch64 \
+    clang-dev bash coreutils
 
 RUN cargo install cargo-binutils axconfig-gen cargo-axplat
 
@@ -31,15 +21,4 @@ RUN wget https://musl.cc/aarch64-linux-musl-cross.tgz \
     && tar zxf loongarch64-linux-musl-cross.tgz \
     && rm -f *.tgz
 
-RUN wget https://download.qemu.org/qemu-10.1.2.tar.xz \
-    && tar xf qemu-10.1.2.tar.xz \
-    && cd qemu-10.1.2 \
-    && ./configure --prefix=/qemu-bin-10.1.2 \
-        --target-list=loongarch64-softmmu,riscv64-softmmu,aarch64-softmmu,x86_64-softmmu \
-        --enable-gcov --enable-debug --enable-slirp \
-    && make -j$(nproc) \
-    && make install
-RUN rm -rf qemu-10.1.2 qemu-10.1.2.tar.xz
-
 ENV PATH="/x86_64-linux-musl-cross/bin:/aarch64-linux-musl-cross/bin:/riscv64-linux-musl-cross/bin:/loongarch64-linux-musl-cross/bin:$PATH"
-ENV PATH="/qemu-bin-10.1.2/bin:$PATH"
