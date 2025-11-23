@@ -9,7 +9,7 @@ use axhal::{
 };
 use axsync::Mutex;
 use enum_dispatch::enum_dispatch;
-use memory_addr::{PAGE_SIZE_4K, PhysAddr, VirtAddr, VirtAddrRange};
+use memory_addr::{DynPageIter, PAGE_SIZE_4K, PhysAddr, VirtAddr, VirtAddrRange};
 use memory_set::MappingBackend;
 
 pub mod cow;
@@ -19,7 +19,7 @@ pub mod shared;
 
 pub use shared::SharedPages;
 
-use crate::{AddrSpace, page_iter::PageIterWrapper};
+use crate::AddrSpace;
 
 fn divide_page(size: usize, page_size: PageSize) -> usize {
     assert!(page_size.is_aligned(size), "unaligned");
@@ -46,8 +46,8 @@ fn dealloc_frame(frame: PhysAddr, align: PageSize) {
     global_allocator().dealloc_pages(vaddr.as_usize(), num_pages, UsageKind::UserMem);
 }
 
-fn pages_in(range: VirtAddrRange, align: PageSize) -> AxResult<PageIterWrapper> {
-    PageIterWrapper::new(range.start, range.end, align).ok_or(AxError::InvalidInput)
+fn pages_in(range: VirtAddrRange, align: PageSize) -> AxResult<DynPageIter<VirtAddr>> {
+    DynPageIter::new(range.start, range.end, align as usize).ok_or(AxError::InvalidInput)
 }
 
 #[enum_dispatch]

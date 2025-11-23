@@ -9,7 +9,6 @@ extern crate alloc;
 
 mod aspace;
 pub mod backend;
-mod page_iter;
 
 use axerrno::LinuxResult;
 use axhal::{
