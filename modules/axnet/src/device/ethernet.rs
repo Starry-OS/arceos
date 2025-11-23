@@ -1,6 +1,5 @@
-use core::task::Waker;
-
 use alloc::{string::String, vec};
+use core::task::Waker;
 
 use axdriver::prelude::*;
 use axhal::irq::register_irq_waker;
@@ -336,7 +335,7 @@ impl Device for EthernetDevice {
 
     fn register_waker(&self, waker: &Waker) {
         if let Some(irq) = self.inner.irq_number() {
-            register_irq_waker(irq, waker);
+            register_irq_waker(irq as _, waker);
         }
     }
 }

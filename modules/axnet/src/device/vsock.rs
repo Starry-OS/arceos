@@ -4,7 +4,7 @@ use core::{
 };
 
 use axdriver::prelude::*;
-use axerrno::{AxError, AxResult, LinuxError, ax_bail};
+use axerrno::{AxError, AxResult, ax_bail};
 use axsync::Mutex;
 use axtask::future::{block_on, interruptible};
 
@@ -196,7 +196,7 @@ pub fn vsock_listen(addr: VsockAddr) -> AxResult<()> {
 fn map_dev_err(e: DevError) -> AxError {
     match e {
         DevError::AlreadyExists => AxError::AlreadyExists,
-        DevError::Again => AxError::Other(LinuxError::EAGAIN),
+        DevError::Again => AxError::WouldBlock,
         DevError::InvalidParam => AxError::InvalidInput,
         DevError::Io => AxError::Io,
         _ => AxError::BadState,

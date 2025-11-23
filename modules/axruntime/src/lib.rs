@@ -306,14 +306,14 @@ fn init_interrupt() {
         axhal::time::set_oneshot_timer(deadline);
     }
 
-    axhal::irq::register(axconfig::devices::TIMER_IRQ, |_| {
+    axhal::irq::register(axconfig::devices::TIMER_IRQ, || {
         update_timer();
         #[cfg(feature = "multitask")]
         axtask::on_timer_tick();
     });
 
     #[cfg(feature = "ipi")]
-    axhal::irq::register(axhal::irq::IPI_IRQ, |_| {
+    axhal::irq::register(axhal::irq::IPI_IRQ, || {
         axipi::ipi_handler();
     });
 

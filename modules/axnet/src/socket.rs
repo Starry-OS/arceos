@@ -12,15 +12,14 @@ use axpoll::{IoEvents, Pollable};
 use bitflags::bitflags;
 use enum_dispatch::enum_dispatch;
 
+#[cfg(feature = "vsock")]
+use crate::vsock::{VsockAddr, VsockSocket};
 use crate::{
     options::{Configurable, GetSocketOption, SetSocketOption},
     tcp::TcpSocket,
     udp::UdpSocket,
     unix::{UnixSocket, UnixSocketAddr},
 };
-
-#[cfg(feature = "vsock")]
-use crate::vsock::{VsockSocket, VsockAddr};
 
 #[derive(Clone, Debug)]
 pub enum SocketAddrEx {
@@ -34,26 +33,26 @@ impl SocketAddrEx {
     pub fn into_ip(self) -> AxResult<SocketAddr> {
         match self {
             SocketAddrEx::Ip(addr) => Ok(addr),
-            SocketAddrEx::Unix(_) => Err(AxError::Other(LinuxError::EAFNOSUPPORT)),
+            SocketAddrEx::Unix(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
             #[cfg(feature = "vsock")]
-            SocketAddrEx::Vsock(_) => Err(AxError::Other(LinuxError::EAFNOSUPPORT)),
+            SocketAddrEx::Vsock(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
         }
     }
 
     pub fn into_unix(self) -> AxResult<UnixSocketAddr> {
         match self {
             SocketAddrEx::Unix(addr) => Ok(addr),
-            SocketAddrEx::Ip(_) => Err(AxError::Other(LinuxError::EAFNOSUPPORT)),
+            SocketAddrEx::Ip(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
             #[cfg(feature = "vsock")]
-            SocketAddrEx::Vsock(_) => Err(AxError::Other(LinuxError::EAFNOSUPPORT)),
+            SocketAddrEx::Vsock(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
         }
     }
 
     #[cfg(feature = "vsock")]
     pub fn into_vsock(self) -> AxResult<VsockAddr> {
         match self {
-            SocketAddrEx::Ip(_) => Err(AxError::Other(LinuxError::EAFNOSUPPORT)),
-            SocketAddrEx::Unix(_) => Err(AxError::Other(LinuxError::EAFNOSUPPORT)),
+            SocketAddrEx::Ip(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
+            SocketAddrEx::Unix(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
             SocketAddrEx::Vsock(addr) => Ok(addr),
         }
     }

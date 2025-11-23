@@ -11,14 +11,11 @@ pub use axplat::irq::{handle, register, set_enable, unregister};
 use axpoll::PollSet;
 
 static POLL_TABLE: [PollSet; 0x30] = [const { PollSet::new() }; 0x30];
-fn poll_handler(irq: usize) {
-    POLL_TABLE[irq].wake();
-}
 
 /// Registers a waker for a IRQ interrupt.
-pub fn register_irq_waker(irq: u32, waker: &Waker) {
-    POLL_TABLE[irq as usize].register(waker);
-    axplat::irq::register(irq as usize, poll_handler);
+pub fn register_irq_waker(irq: usize, waker: &Waker) {
+    set_enable(irq, true);
+    POLL_TABLE[irq].register(waker);
 }
 
 /// IRQ handler.
@@ -29,7 +26,11 @@ pub fn register_irq_waker(irq: u32, waker: &Waker) {
 #[register_trap_handler(IRQ)]
 pub fn irq_handler(vector: usize) -> bool {
     let guard = kernel_guard::NoPreempt::new();
-    handle(vector);
+    if let Some(irq) = handle(vector)
+        && let Some(set) = POLL_TABLE.get(irq)
+    {
+        set.wake();
+    }
     drop(guard); // rescheduling may occur when preemption is re-enabled.
     true
 }

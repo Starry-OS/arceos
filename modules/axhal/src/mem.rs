@@ -1,7 +1,7 @@
 //! Physical memory management.
 
 pub use axplat::mem::{
-    MemRegionFlags, PhysMemRegion, mmio_ranges, phys_ram_ranges, phys_to_virt,
+    MemRegionFlags, PhysMemRegion, kernel_aspace, mmio_ranges, phys_ram_ranges, phys_to_virt,
     reserved_phys_ram_ranges, total_ram_size, virt_to_phys,
 };
 use axplat::mem::{check_sorted_ranges_overlap, ranges_difference};
