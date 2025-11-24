@@ -64,3 +64,4 @@ axdriver_virtio = { version = "0.1", git = "https://github.com/arceos-org/axdriv
 cfg-if = { workspace = true }
 crate_interface = { workspace = true }
 log = { workspace = true }
+smallvec = { version = "1.15.1", features = ["const_generics", "union"] }

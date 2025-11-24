@@ -324,6 +324,7 @@ dependencies = [
  "cfg-if",
  "crate_interface",
  "log",
+ "smallvec",
 ]
 
 [[package]]
