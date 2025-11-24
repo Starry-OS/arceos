@@ -329,12 +329,12 @@ dependencies = [
 [[package]]
 name = "axdriver_base"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a263470#a2634709194f2fd595a52b660d7d43df7c32570e"
+source = "git+https://github.com/arceos-org/axdriver_crates.git?tag=dev-v01#cd0c5372cbf3964ffd8e9c398e0e6096b6bb909a"
 
 [[package]]
 name = "axdriver_block"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a263470#a2634709194f2fd595a52b660d7d43df7c32570e"
+source = "git+https://github.com/arceos-org/axdriver_crates.git?tag=dev-v01#cd0c5372cbf3964ffd8e9c398e0e6096b6bb909a"
 dependencies = [
  "axdriver_base",
  "bcm2835-sdhci",
@@ -346,7 +346,7 @@ dependencies = [
 [[package]]
 name = "axdriver_display"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a263470#a2634709194f2fd595a52b660d7d43df7c32570e"
+source = "git+https://github.com/arceos-org/axdriver_crates.git?tag=dev-v01#cd0c5372cbf3964ffd8e9c398e0e6096b6bb909a"
 dependencies = [
  "axdriver_base",
 ]
@@ -354,7 +354,7 @@ dependencies = [
 [[package]]
 name = "axdriver_input"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a263470#a2634709194f2fd595a52b660d7d43df7c32570e"
+source = "git+https://github.com/arceos-org/axdriver_crates.git?tag=dev-v01#cd0c5372cbf3964ffd8e9c398e0e6096b6bb909a"
 dependencies = [
  "axdriver_base",
  "strum",
@@ -363,7 +363,7 @@ dependencies = [
 [[package]]
 name = "axdriver_net"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a263470#a2634709194f2fd595a52b660d7d43df7c32570e"
+source = "git+https://github.com/arceos-org/axdriver_crates.git?tag=dev-v01#cd0c5372cbf3964ffd8e9c398e0e6096b6bb909a"
 dependencies = [
  "axdriver_base",
  "fxmac_rs",
@@ -375,7 +375,7 @@ dependencies = [
 [[package]]
 name = "axdriver_pci"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a263470#a2634709194f2fd595a52b660d7d43df7c32570e"
+source = "git+https://github.com/arceos-org/axdriver_crates.git?tag=dev-v01#cd0c5372cbf3964ffd8e9c398e0e6096b6bb909a"
 dependencies = [
  "virtio-drivers",
 ]
@@ -383,7 +383,7 @@ dependencies = [
 [[package]]
 name = "axdriver_virtio"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a263470#a2634709194f2fd595a52b660d7d43df7c32570e"
+source = "git+https://github.com/arceos-org/axdriver_crates.git?tag=dev-v01#cd0c5372cbf3964ffd8e9c398e0e6096b6bb909a"
 dependencies = [
  "axdriver_base",
  "axdriver_block",
@@ -398,7 +398,7 @@ dependencies = [
 [[package]]
 name = "axdriver_vsock"
 version = "0.1.2"
-source = "git+https://github.com/Starry-OS/axdriver_crates.git?rev=a263470#a2634709194f2fd595a52b660d7d43df7c32570e"
+source = "git+https://github.com/arceos-org/axdriver_crates.git?tag=dev-v01#cd0c5372cbf3964ffd8e9c398e0e6096b6bb909a"
 dependencies = [
  "axdriver_base",
  "log",

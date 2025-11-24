@@ -138,7 +138,6 @@ impl AllDevices {
             }
         });
 
-        #[cfg(any(bus = "pci", bus = "mmio"))]
         self.probe_bus_devices();
     }
 

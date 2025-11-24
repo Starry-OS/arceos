@@ -27,7 +27,7 @@ fn enable_cfg(key: &str, value: &str) {
 fn main() {
     if has_feature("bus-mmio") {
         enable_cfg("bus", "mmio");
-    } else if has_feature("bus-pci") {
+    } else {
         enable_cfg("bus", "pci");
     }
 

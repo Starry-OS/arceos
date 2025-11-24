@@ -14,8 +14,6 @@ cfg_if! {
         type VirtIoTransport = axdriver_virtio::PciTransport;
     } else if #[cfg(bus =  "mmio")] {
         type VirtIoTransport = axdriver_virtio::MmioTransport;
-    } else {
-        type VirtIoTransport = axdriver_virtio::DummyTransport;
     }
 }
 
@@ -26,7 +24,7 @@ pub trait VirtIoDevMeta {
     type Device: BaseDriverOps;
     type Driver = VirtIoDriver<Self>;
 
-    fn try_new(transport: VirtIoTransport, irq: Option<u32>) -> DevResult<AxDeviceEnum>;
+    fn try_new(transport: VirtIoTransport, irq: Option<usize>) -> DevResult<AxDeviceEnum>;
 }
 
 cfg_if! {
@@ -37,7 +35,7 @@ cfg_if! {
             const DEVICE_TYPE: DeviceType = DeviceType::Net;
             type Device = axdriver_virtio::VirtIoNetDev<VirtIoHalImpl, VirtIoTransport, 64>;
 
-            fn try_new(transport: VirtIoTransport, irq: Option<u32>) -> DevResult<AxDeviceEnum> {
+            fn try_new(transport: VirtIoTransport, irq: Option<usize>) -> DevResult<AxDeviceEnum> {
                 Ok(AxDeviceEnum::from_net(Self::Device::try_new(transport, irq)?))
             }
         }
@@ -52,7 +50,7 @@ cfg_if! {
             const DEVICE_TYPE: DeviceType = DeviceType::Block;
             type Device = axdriver_virtio::VirtIoBlkDev<VirtIoHalImpl, VirtIoTransport>;
 
-            fn try_new(transport: VirtIoTransport, _irq:  Option<u32>) -> DevResult<AxDeviceEnum> {
+            fn try_new(transport: VirtIoTransport, _irq:  Option<usize>) -> DevResult<AxDeviceEnum> {
                 Ok(AxDeviceEnum::from_block(Self::Device::try_new(transport)?))
             }
         }
@@ -67,7 +65,7 @@ cfg_if! {
             const DEVICE_TYPE: DeviceType = DeviceType::Vsock;
             type Device = axdriver_virtio::VirtIoSocketDev<VirtIoHalImpl, VirtIoTransport>;
 
-            fn try_new(transport: VirtIoTransport, _irq:  Option<u32>) -> DevResult<AxDeviceEnum> {
+            fn try_new(transport: VirtIoTransport, _irq:  Option<usize>) -> DevResult<AxDeviceEnum> {
                 Ok(AxDeviceEnum::from_vsock(Self::Device::try_new(transport)?))
             }
         }
@@ -82,7 +80,7 @@ cfg_if! {
             const DEVICE_TYPE: DeviceType = DeviceType::Display;
             type Device = axdriver_virtio::VirtIoGpuDev<VirtIoHalImpl, VirtIoTransport>;
 
-            fn try_new(transport: VirtIoTransport, _irq:  Option<u32>) -> DevResult<AxDeviceEnum> {
+            fn try_new(transport: VirtIoTransport, _irq:  Option<usize>) -> DevResult<AxDeviceEnum> {
                 Ok(AxDeviceEnum::from_display(Self::Device::try_new(transport)?))
             }
         }
@@ -97,7 +95,7 @@ cfg_if! {
             const DEVICE_TYPE: DeviceType = DeviceType::Input;
             type Device = axdriver_virtio::VirtIoInputDev<VirtIoHalImpl, VirtIoTransport>;
 
-            fn try_new(transport: VirtIoTransport, _irq:  Option<u32>) -> DevResult<AxDeviceEnum> {
+            fn try_new(transport: VirtIoTransport, _irq:  Option<usize>) -> DevResult<AxDeviceEnum> {
                 Ok(AxDeviceEnum::from_input(Self::Device::try_new(transport)?))
             }
         }

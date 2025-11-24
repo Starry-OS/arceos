@@ -334,8 +334,8 @@ impl Device for EthernetDevice {
     }
 
     fn register_waker(&self, waker: &Waker) {
-        if let Some(irq) = self.inner.irq_number() {
-            register_irq_waker(irq as _, waker);
+        if let Some(irq) = self.inner.irq_num() {
+            register_irq_waker(irq, waker);
         }
     }
 }
