@@ -202,7 +202,7 @@ impl DirNodeOps for FatDirNode {
         // handle it
         match dst_dir.inner.borrow(&fs).remove(dst_name) {
             Ok(_) => {
-                log::warn!("对 I removed {}", dst_name);
+                warn!("对 I removed {}", dst_name);
             }
             Err(fatfs::Error::NotFound) => {}
             Err(err) => return Err(into_vfs_err(err)),

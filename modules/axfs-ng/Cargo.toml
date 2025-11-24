@@ -1,13 +1,13 @@
 [package]
 name = "axfs-ng"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 authors = ["Mivik <mivikq@gmail.com>"]
 license.workspace = true
 homepage.workspace = true
 
 [features]
-default = ["fat"]
+default = []
 fat = ["dep:fatfs"]
 ext4 = ["dep:lwext4_rust"]
 times = []

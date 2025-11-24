@@ -4,12 +4,27 @@
 
 extern crate alloc;
 
-mod disk;
-pub mod fs;
-mod highlevel;
+#[macro_use]
+extern crate log;
 
+use axdriver::{AxBlockDevice, AxDeviceContainer, prelude::*};
+
+#[cfg(feature = "fat")]
+mod disk;
+mod fs;
+
+mod highlevel;
 pub use highlevel::*;
 
-// TODO(mizu): Unify `Mutex` usage in this module. Currently we have
-// `spin::Mutex`, `axsync::Mutex` and `kspin::Spin*`. A hybrid spinlock mutex
-// may be a good choice.
+pub fn init_filesystems(mut block_devs: AxDeviceContainer<AxBlockDevice>) {
+    info!("Initialize filesystem subsystem...");
+
+    let dev = block_devs.take_one().expect("No block device found!");
+    info!("  use block device 0: {:?}", dev.device_name());
+
+    let fs = fs::new_default(dev).expect("Failed to initialize filesystem");
+    info!("  filesystem type: {:?}", fs.name());
+
+    let mp = axfs_ng_vfs::Mountpoint::new_root(&fs);
+    ROOT_FS_CONTEXT.call_once(|| FsContext::new(mp.root_location()));
+}

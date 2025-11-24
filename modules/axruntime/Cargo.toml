@@ -20,7 +20,7 @@ paging = ["axhal/paging", "axmm"]
 ipi = ["dep:axipi"]
 
 multitask = ["axtask/multitask"]
-fs = ["axdriver", "axfs-ng", "axfs-ng-vfs"]
+fs = ["axdriver", "axfs-ng"]
 net = ["axdriver", "axnet"]
 vsock = ["net"]
 display = ["axdriver", "axdisplay"]
@@ -42,7 +42,6 @@ axmm = { workspace = true, optional = true }
 axnet = { workspace = true, optional = true }
 axtask = { workspace = true, optional = true }
 
-axfs-ng-vfs = { workspace = true, optional = true }
 axplat = { workspace = true }
 chrono = { workspace = true, optional = true }
 crate_interface = { workspace = true }

@@ -744,7 +744,6 @@ dependencies = [
  "axdisplay",
  "axdriver",
  "axfs-ng",
- "axfs-ng-vfs",
  "axhal",
  "axinput",
  "axipi",

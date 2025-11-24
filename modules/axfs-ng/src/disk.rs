@@ -17,7 +17,6 @@ fn take_mut<'a>(buf: &mut &'a mut [u8], cnt: usize) -> &'a mut [u8] {
 }
 
 /// A disk device with a cursor.
-#[allow(unused)]
 pub struct SeekableDisk {
     dev: AxBlockDevice,
 
@@ -33,7 +32,6 @@ pub struct SeekableDisk {
     write_buffer_dirty: bool,
 }
 
-#[allow(unused)]
 impl SeekableDisk {
     /// Create a new disk.
     pub fn new(dev: AxBlockDevice) -> Self {
@@ -84,7 +82,7 @@ impl SeekableDisk {
         Ok(())
     }
 
-    fn read_partial(&mut self, mut buf: &mut &mut [u8]) -> DevResult<usize> {
+    fn read_partial(&mut self, buf: &mut &mut [u8]) -> DevResult<usize> {
         self.flush()?;
         self.dev.read_block(self.block_id, &mut self.read_buffer)?;
 
