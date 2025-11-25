@@ -15,13 +15,11 @@ pub struct GlobalPage {
 impl GlobalPage {
     /// Allocate one 4K-sized page.
     pub fn alloc() -> AxResult<Self> {
-        global_allocator()
-            .alloc_pages(1, PAGE_SIZE, UsageKind::Global)
-            .map(|vaddr| Self {
-                start_vaddr: vaddr.into(),
-                num_pages: 1,
-            })
-            .map_err(Into::into)
+        let vaddr = global_allocator().alloc_pages(1, PAGE_SIZE, UsageKind::Global)?;
+        Ok(Self {
+            start_vaddr: vaddr.into(),
+            num_pages: 1,
+        })
     }
 
     /// Allocate one 4K-sized page and fill with zero.
@@ -33,13 +31,11 @@ impl GlobalPage {
 
     /// Allocate contiguous 4K-sized pages.
     pub fn alloc_contiguous(num_pages: usize, align_pow2: usize) -> AxResult<Self> {
-        global_allocator()
-            .alloc_pages(num_pages, align_pow2, UsageKind::Global)
-            .map(|vaddr| Self {
-                start_vaddr: vaddr.into(),
-                num_pages,
-            })
-            .map_err(Into::into)
+        let vaddr = global_allocator().alloc_pages(num_pages, align_pow2, UsageKind::Global)?;
+        Ok(Self {
+            start_vaddr: vaddr.into(),
+            num_pages,
+        })
     }
 
     /// Get the start virtual address of this page.

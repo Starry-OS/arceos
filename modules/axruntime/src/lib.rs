@@ -111,7 +111,7 @@ fn is_init_ok() -> bool {
 #[cfg_attr(not(test), axplat::main)]
 pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
     unsafe { axhal::mem::clear_bss() };
-    axhal::init_percpu(cpu_id);
+    axhal::percpu::init_primary(cpu_id);
     axhal::init_early(cpu_id, arg);
 
     ax_println!("{}", LOGO);
@@ -193,24 +193,10 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
     #[cfg(any(feature = "fs", feature = "net", feature = "display"))]
     {
         #[allow(unused_variables)]
-        let mut all_devices = axdriver::init_drivers();
+        let all_devices = axdriver::init_drivers();
 
         #[cfg(feature = "fs")]
-        {
-            #[allow(unused_imports)]
-            use axdriver::prelude::BaseDriverOps;
-
-            axfs_ng::ROOT_FS_CONTEXT.call_once(|| {
-                let dev = all_devices
-                    .block
-                    .take_one()
-                    .expect("No block device found!");
-                info!("Block device: {}", dev.device_name());
-                let fs = axfs_ng::fs::new_default(dev).expect("Failed to initialize filesystem");
-                let mount = axfs_ng_vfs::Mountpoint::new_root(&fs);
-                axfs_ng::FsContext::new(mount.root_location())
-            });
-        }
+        axfs_ng::init_filesystems(all_devices.block);
 
         #[cfg(feature = "net")]
         axnet::init_network(all_devices.net);
@@ -306,14 +292,14 @@ fn init_interrupt() {
         axhal::time::set_oneshot_timer(deadline);
     }
 
-    axhal::irq::register(axconfig::devices::TIMER_IRQ, |_| {
+    axhal::irq::register(axconfig::devices::TIMER_IRQ, || {
         update_timer();
         #[cfg(feature = "multitask")]
         axtask::on_timer_tick();
     });
 
     #[cfg(feature = "ipi")]
-    axhal::irq::register(axhal::irq::IPI_IRQ, |_| {
+    axhal::irq::register(axhal::irq::IPI_IRQ, || {
         axipi::ipi_handler();
     });
 

@@ -1,10 +1,11 @@
+use core::ops::{Deref, DerefMut};
+
+use axdriver_base::{BaseDriverOps, DeviceType};
+use smallvec::SmallVec;
+
 #[cfg_attr(feature = "dyn", path = "dyn.rs")]
 #[cfg_attr(not(feature = "dyn"), path = "static.rs")]
 mod imp;
-
-use alloc::vec::Vec;
-
-use axdriver_base::{BaseDriverOps, DeviceType};
 pub use imp::*;
 
 /// A unified enum that represents different categories of devices.
@@ -65,37 +66,27 @@ impl BaseDriverOps for AxDeviceEnum {
 }
 
 /// A structure that contains all device drivers of a certain category.
-pub struct AxDeviceContainer<D>(Vec<D>);
+pub struct AxDeviceContainer<D>(SmallVec<[D; 2]>);
 
 impl<D> AxDeviceContainer<D> {
-    /// Returns number of devices in this container.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Returns whether the container is empty.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
     /// Takes one device out of the container (will remove it from the
     /// container).
     pub fn take_one(&mut self) -> Option<D> {
         self.0.pop()
     }
-
-    /// Adds one device into the container.
-    #[allow(dead_code)]
-    pub(crate) fn push(&mut self, dev: D) {
-        self.0.push(dev);
-    }
 }
 
-impl<D> core::ops::Deref for AxDeviceContainer<D> {
-    type Target = Vec<D>;
+impl<D> Deref for AxDeviceContainer<D> {
+    type Target = SmallVec<[D; 2]>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<D> DerefMut for AxDeviceContainer<D> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

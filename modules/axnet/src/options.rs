@@ -81,7 +81,7 @@ pub trait Configurable {
     fn get_option(&self, mut opt: GetSocketOption) -> AxResult {
         self.get_option_inner(&mut opt).and_then(|supported| {
             if !supported {
-                Err(AxError::Other(LinuxError::ENOPROTOOPT))
+                Err(AxError::from(LinuxError::ENOPROTOOPT))
             } else {
                 Ok(())
             }
@@ -90,7 +90,7 @@ pub trait Configurable {
     fn set_option(&self, opt: SetSocketOption) -> AxResult {
         self.set_option_inner(opt).and_then(|supported| {
             if !supported {
-                Err(AxError::Other(LinuxError::ENOPROTOOPT))
+                Err(AxError::from(LinuxError::ENOPROTOOPT))
             } else {
                 Ok(())
             }

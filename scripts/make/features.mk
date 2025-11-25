@@ -55,7 +55,7 @@ endif
 
 ifeq ($(BUS),mmio)
   ax_feat += bus-mmio
-else ifeq ($(BUS),pci)
+else
   ax_feat += bus-pci
 endif
 

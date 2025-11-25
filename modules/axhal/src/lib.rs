@@ -58,7 +58,6 @@ cfg_if::cfg_if! {
 
 pub mod mem;
 pub mod percpu;
-pub mod time;
 
 #[cfg(feature = "tls")]
 pub mod tls;
@@ -69,9 +68,16 @@ pub mod irq;
 #[cfg(feature = "paging")]
 pub mod paging;
 
+/// Time-related operations.
+pub mod time {
+    pub use axplat::time::*;
+}
+
 /// Console input and output.
 pub mod console {
-    pub use axplat::console::{irq_number, read_bytes, write_bytes};
+    #[cfg(feature = "irq")]
+    pub use axplat::console::irq_num;
+    pub use axplat::console::{read_bytes, write_bytes};
 }
 
 /// CPU power management.
@@ -90,39 +96,21 @@ pub mod trap {
 ///
 /// There are three types of context:
 ///
-/// - [`TaskContext`][axcpu::TaskContext]: The context of a task.
-/// - [`TrapFrame`][axcpu::TrapFrame]: The context of an interrupt or an
-///   exception.
-/// - [`UserContext`][axcpu::uspace::UserContext]: The context for user mode.
+/// - [`TaskContext`][context::TaskContext]: The context of a task.
+/// - [`TrapFrame`][context::TrapFrame]: The context of an interrupt or an exception.
+/// - [`UserContext`][uspace::UserContext]: The context for user mode.
 pub mod context {
     pub use axcpu::{TaskContext, TrapFrame};
 }
 
+pub use axcpu::asm;
 /// User mode support.
 #[cfg(feature = "uspace")]
 pub use axcpu::uspace;
 
-pub use axcpu::asm;
 pub use axplat::init::init_later;
 #[cfg(feature = "smp")]
 pub use axplat::init::{init_early_secondary, init_later_secondary};
-
-/// Initializes CPU-local data structures for the primary core.
-///
-/// This function should be called as early as possible, as other
-/// initializations may acess the CPU-local data.
-pub fn init_percpu(cpu_id: usize) {
-    self::percpu::init_primary(cpu_id);
-}
-
-/// Initializes CPU-local data structures for secondary cores.
-///
-/// This function should be called as early as possible, as other
-/// initializations may acess the CPU-local data.
-#[cfg(feature = "smp")]
-pub fn init_percpu_secondary(cpu_id: usize) {
-    self::percpu::init_secondary(cpu_id);
-}
 
 use lazyinit::LazyInit;
 
