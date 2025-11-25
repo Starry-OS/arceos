@@ -13,8 +13,6 @@ repository = "https://github.com/arceos-org/arceos/tree/main/modules/axdriver"
 documentation = "https://arceos-org.github.io/arceos/axdriver/index.html"
 
 [features]
-default = ["bus-pci"]
-
 dyn = []
 bus-mmio = []
 bus-pci = ["dep:axdriver_pci", "dep:axhal", "dep:axconfig"]
