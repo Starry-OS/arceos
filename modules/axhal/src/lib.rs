@@ -97,7 +97,7 @@ pub mod trap {
 /// There are three types of context:
 ///
 /// - [`TaskContext`][context::TaskContext]: The context of a task.
-/// - [`TrapFrame`][context::TrapFrame]: The context of an interrupt or an sexception.
+/// - [`TrapFrame`][context::TrapFrame]: The context of an interrupt or an exception.
 /// - [`UserContext`][uspace::UserContext]: The context for user mode.
 pub mod context {
     pub use axcpu::{TaskContext, TrapFrame};
