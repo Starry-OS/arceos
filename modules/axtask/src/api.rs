@@ -8,15 +8,12 @@ use alloc::{
 use kernel_guard::NoPreemptIrqSave;
 
 pub(crate) use crate::run_queue::{current_run_queue, select_run_queue};
-
 #[doc(cfg(all(feature = "multitask", feature = "task-ext")))]
 #[cfg(feature = "task-ext")]
 pub use crate::task::{AxTaskExt, TaskExt};
-
 #[doc(cfg(all(feature = "multitask", feature = "irq")))]
 #[cfg(feature = "irq")]
 pub use crate::timers::register_timer_callback;
-
 #[doc(cfg(feature = "multitask"))]
 pub use crate::{
     task::{CurrentTask, TaskId, TaskInner, TaskState},
@@ -125,7 +122,8 @@ where
     spawn_task(TaskInner::new(f, name, stack_size))
 }
 
-/// Spawns a new task with the given name and the default stack size ([`axconfig::TASK_STACK_SIZE`]).
+/// Spawns a new task with the given name and the default stack size
+/// ([`axconfig::TASK_STACK_SIZE`]).
 ///
 /// Returns the task reference.
 pub fn spawn_with_name<F>(f: F, name: String) -> AxTaskRef
@@ -151,8 +149,8 @@ where
 /// Set the priority for current task.
 ///
 /// The range of the priority is dependent on the underlying scheduler. For
-/// example, in the [CFS] scheduler, the priority is the nice value, ranging from
-/// -20 to 19.
+/// example, in the [CFS] scheduler, the priority is the nice value, ranging
+/// from -20 to 19.
 ///
 /// Returns `true` if the priority is set successfully.
 ///
@@ -216,10 +214,7 @@ pub fn sleep(dur: core::time::Duration) {
 /// If the feature `irq` is not enabled, it uses busy-wait instead.
 pub fn sleep_until(deadline: axhal::time::TimeValue) {
     #[cfg(feature = "irq")]
-    let _ = crate::future::block_on(crate::future::timeout_at(
-        Some(deadline),
-        futures_util::future::pending::<()>(),
-    ));
+    let _ = crate::future::block_on(crate::future::sleep_until(deadline));
     #[cfg(not(feature = "irq"))]
     axhal::time::busy_wait_until(deadline);
 }
