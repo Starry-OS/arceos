@@ -9,9 +9,13 @@ use axcpu::trap::{IRQ, register_trap_handler};
 pub use axplat::irq::{IpiTarget, send_ipi};
 pub use axplat::irq::{handle, register, set_enable, unregister};
 
-// TODO: design a better api!
 static IRQ_HOOK: AtomicPtr<()> = AtomicPtr::new(core::ptr::null_mut());
 
+/// Register a hook function called after an IRQ is handled.
+///
+/// This function can be called only once; subsequent calls will return false.
+///
+/// TODO: design a better api!
 pub fn register_irq_hook(hook: fn(usize)) -> bool {
     IRQ_HOOK
         .compare_exchange(
