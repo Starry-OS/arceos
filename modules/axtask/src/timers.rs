@@ -22,7 +22,7 @@ where
     };
 }
 
-pub fn check_events() {
+pub(crate) fn check_events() {
     for callback in unsafe { TIMER_CALLBACKS.current_ref_raw().iter() } {
         callback(wall_time());
     }
