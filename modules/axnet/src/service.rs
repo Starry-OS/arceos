@@ -2,10 +2,9 @@ use alloc::boxed::Box;
 use core::{
     pin::Pin,
     task::{Context, Waker},
-    time::Duration,
 };
 
-use axhal::time::{NANOS_PER_MICROS, wall_time, wall_time_nanos};
+use axhal::time::{NANOS_PER_MICROS, TimeValue, wall_time_nanos};
 use axtask::future::sleep_until;
 use smoltcp::{
     iface::{Interface, SocketSet},
@@ -63,33 +62,29 @@ impl Service {
     }
 
     pub fn register_waker(&mut self, mask: u32, waker: &Waker) {
-        let mut cx = Context::from_waker(waker);
-        if let Some(timeout) = &mut self.timeout {
-            if timeout.as_mut().poll(&mut cx).is_ready() {
-                self.timeout = None;
+        let next = self.iface.poll_at(now(), &mut SOCKET_SET.inner.lock());
+
+        if let Some(t) = next {
+            let next = TimeValue::from_micros(t.total_micros() as _);
+
+            // drop old timeout future
+            self.timeout = None;
+
+            let mut fut = Box::pin(sleep_until(next));
+            let mut cx = Context::from_waker(waker);
+
+            if fut.as_mut().poll(&mut cx).is_ready() {
                 waker.wake_by_ref();
+                return;
+            } else {
+                self.timeout = Some(fut);
             }
         }
 
-        let next = self.iface.poll_at(now(), &mut SOCKET_SET.inner.lock());
-        let now = wall_time();
-        let delay = next
-            .map(|t| {
-                let next = Duration::from_micros(t.total_micros() as _);
-                next.checked_sub(now)
-            })
-            .unwrap_or(Some(Duration::from_secs(1)));
-
-        if let Some(delay) = delay {
-            for (i, device) in self.router.devices.iter().enumerate() {
-                if mask & (1 << i) != 0 {
-                    device.register_waker(waker);
-                }
+        for (i, device) in self.router.devices.iter().enumerate() {
+            if mask & (1 << i) != 0 {
+                device.register_waker(waker);
             }
-            self.timeout = Some(Box::pin(sleep_until(now + delay)));
-        } else {
-            self.timeout = None;
-            waker.wake_by_ref();
         }
     }
 }
