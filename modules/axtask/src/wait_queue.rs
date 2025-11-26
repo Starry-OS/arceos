@@ -10,8 +10,9 @@ use crate::future::{block_on, timeout_at};
 /// # Examples
 ///
 /// ```
-/// use axtask::WaitQueue;
 /// use core::sync::atomic::{AtomicU32, Ordering};
+///
+/// use axtask::WaitQueue;
 ///
 /// static VALUE: AtomicU32 = AtomicU32::new(0);
 /// static WQ: WaitQueue = WaitQueue::new();
@@ -75,13 +76,13 @@ impl WaitQueue {
         });
     }
 
-    /// Blocks the current task and put it into the wait queue, until other tasks
-    /// notify it, or the given duration has elapsed.
+    /// Blocks the current task and put it into the wait queue, until other
+    /// tasks notify it, or the given duration has elapsed.
     pub fn wait_timeout(&self, dur: Duration) -> bool {
         let deadline = wall_time() + dur;
         block_on(async {
             listener!(self.event => listener);
-            timeout_at(Some(deadline), listener).await.is_ok()
+            timeout_at(Some(deadline), listener).await.is_err()
         })
     }
 
