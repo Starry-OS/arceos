@@ -80,7 +80,7 @@ pub fn start_vsock_poll() {
         if !POLL_TASK_RUNNING.swap(true, Ordering::SeqCst) {
             drop(count);
             debug!("Starting vsock poll task");
-            axtask::spawn(vsock_poll_loop, "vsock-poll".to_string());
+            axtask::spawn_with_name(vsock_poll_loop, "vsock-poll".to_string());
         } else {
             warn!("Poll task already running!");
         }

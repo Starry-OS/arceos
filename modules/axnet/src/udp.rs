@@ -184,7 +184,7 @@ impl SocketOps for UdpSocket {
                 0,
             )))?;
         }
-        self.general.send_poller(self).poll(|| {
+        self.general.send_poller(self, || {
             poll_interfaces();
             self.with_smol_socket(|socket| {
                 if !socket.is_open() {
@@ -230,7 +230,7 @@ impl SocketOps for UdpSocket {
             None => ExpectedRemote::Expecting(self.remote_endpoint()?.0),
         };
 
-        self.general.recv_poller(self).poll(|| {
+        self.general.recv_poller(self, || {
             poll_interfaces();
             self.with_smol_socket(|socket| {
                 if !socket.is_open() {

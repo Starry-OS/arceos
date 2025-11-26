@@ -12,7 +12,7 @@ use crate::{
     general::GeneralOptions,
     options::{Configurable, GetSocketOption, SetSocketOption},
     state::*,
-    vsock::{VsockTransport, VsockTransportOps, VsockAddr},
+    vsock::{VsockAddr, VsockTransport, VsockTransportOps},
 };
 
 pub struct VsockStreamTransport {
@@ -98,7 +98,7 @@ impl VsockTransportOps for VsockStreamTransport {
         let local_port = conn.lock().local_addr().port;
 
         // wait for connection
-        self.general.recv_poller(self).poll(|| {
+        self.general.recv_poller(self, || {
             let mut manager = VSOCK_CONN_MANAGER.lock();
 
             if !manager.can_accept(local_port) {
@@ -177,7 +177,7 @@ impl VsockTransportOps for VsockStreamTransport {
         })?;
 
         // wait for connection established
-        self.general.send_poller(self).poll(|| {
+        self.general.send_poller(self, || {
             let conn = self.get_connection()?;
             let state = conn.lock().state();
             match state {
@@ -219,7 +219,7 @@ impl VsockTransportOps for VsockStreamTransport {
     fn recv(&self, dst: &mut impl BufMut, options: RecvOptions) -> AxResult<usize> {
         let conn = self.get_connection()?;
 
-        self.general.recv_poller(self).poll(|| {
+        self.general.recv_poller(self, || {
             let mut conn_guard = conn.lock();
 
             if conn_guard.rx_closed() && conn_guard.rx_buffer_used() == 0 {
@@ -227,7 +227,10 @@ impl VsockTransportOps for VsockStreamTransport {
             }
 
             // should allow read when connection is closed, to read remaining data
-            if !matches!(conn_guard.state(), ConnectionState::Connected | ConnectionState::Closed) {
+            if !matches!(
+                conn_guard.state(),
+                ConnectionState::Connected | ConnectionState::Closed
+            ) {
                 return Err(AxError::NotConnected);
             }
 

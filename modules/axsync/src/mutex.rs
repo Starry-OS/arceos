@@ -146,7 +146,7 @@ mod tests {
 
     fn may_interrupt() {
         // simulate interrupts
-        if rand::random::<u32>() % 3 == 0 {
+        if getrandom::u32().unwrap() % 3 == 0 {
             thread::yield_now();
         }
     }
@@ -159,7 +159,7 @@ mod tests {
         const NUM_ITERS: u32 = 10_000;
         static M: Mutex<u32> = Mutex::new(0);
 
-        fn inc(delta: u32) -> ! {
+        fn inc(delta: u32) {
             for _ in 0..NUM_ITERS {
                 let mut val = M.lock();
                 *val += delta;
@@ -170,8 +170,8 @@ mod tests {
         }
 
         for _ in 0..NUM_TASKS {
-            thread::spawn(|| inc(1), "".into());
-            thread::spawn(|| inc(2), "".into());
+            thread::spawn(|| inc(1));
+            thread::spawn(|| inc(2));
         }
 
         println!("spawn OK");
