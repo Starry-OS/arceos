@@ -5,6 +5,15 @@ use axpoll::{IoEvents, Pollable};
 
 /// A helper to wrap a synchronous non-blocking I/O function into an
 /// asynchronous function.
+///
+/// # Arguments
+///
+/// * `pollable`: The pollable object to register for I/O events.
+/// * `events`: The I/O events to wait for.
+/// * `non_blocking`: If true, the function will return `AxError::WouldBlock`
+///   immediately when the I/O operation would block.
+/// * `f`: The synchronous non-blocking I/O function to be wrapped. It should
+///   return `AxError::WouldBlock` when the operation would block.
 pub async fn poll_io<P: Pollable, F: FnMut() -> AxResult<T>, T>(
     pollable: &P,
     events: IoEvents,
