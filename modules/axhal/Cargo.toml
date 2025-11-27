@@ -32,7 +32,6 @@ axlog = { workspace = true }
 
 axcpu = { workspace = true }
 axplat = { workspace = true }
-axpoll = { workspace = true }
 cfg-if = { workspace = true }
 heapless = "0.8"
 kernel_guard = { workspace = true }

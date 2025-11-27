@@ -15,11 +15,11 @@ default = []
 
 [dependencies]
 axtask = { workspace = true }
-event-listener = { version = "5.4.0", default-features = false }
+event-listener = { workspace = true }
 kspin = { workspace = true }
 lock_api = { version = "0.4", default-features = false }
 
 [dev-dependencies]
 axsync = { workspace = true, features = ["multitask"] }
 axtask = { workspace = true, features = ["test"] }
-rand = { workspace = true }
+getrandom = "0.3"

@@ -1,10 +1,10 @@
+use alloc::boxed::Box;
 use core::{
-    pin::pin,
+    pin::Pin,
     task::{Context, Waker},
-    time::Duration,
 };
 
-use axhal::time::{NANOS_PER_MICROS, wall_time_nanos};
+use axhal::time::{NANOS_PER_MICROS, TimeValue, wall_time_nanos};
 use axtask::future::sleep_until;
 use smoltcp::{
     iface::{Interface, SocketSet},
@@ -21,13 +21,18 @@ fn now() -> Instant {
 pub struct Service {
     pub iface: Interface,
     router: Router,
+    timeout: Option<Pin<Box<dyn Future<Output = ()> + Send>>>,
 }
 impl Service {
     pub fn new(mut router: Router) -> Self {
         let config = smoltcp::iface::Config::new(HardwareAddress::Ip);
         let iface = Interface::new(config, &mut router, now());
 
-        Self { iface, router }
+        Self {
+            iface,
+            router,
+            timeout: None,
+        }
     }
 
     pub fn poll(&mut self, sockets: &mut SocketSet) -> bool {
@@ -58,26 +63,27 @@ impl Service {
 
     pub fn register_waker(&mut self, mask: u32, waker: &Waker) {
         let next = self.iface.poll_at(now(), &mut SOCKET_SET.inner.lock());
-        match next {
-            Some(next) if next.total_micros() == 0 => {
-                // Poll now!
-                // warn!("POLL NOW");
+
+        if let Some(t) = next {
+            let next = TimeValue::from_micros(t.total_micros() as _);
+
+            // drop old timeout future
+            self.timeout = None;
+
+            let mut fut = Box::pin(sleep_until(next));
+            let mut cx = Context::from_waker(waker);
+
+            if fut.as_mut().poll(&mut cx).is_ready() {
                 waker.wake_by_ref();
+                return;
+            } else {
+                self.timeout = Some(fut);
             }
-            _ => {
-                for (i, device) in self.router.devices.iter().enumerate() {
-                    if mask & (1 << i) != 0 {
-                        device.register_waker(waker);
-                    }
-                }
-                if let Some(next) = next {
-                    let mut cx = Context::from_waker(waker);
-                    let deadline = Duration::from_micros(next.total_micros() as _);
-                    // warn!("WAIT {:?}", deadline .checked_sub(wall_time()));
-                    let _ = pin!(sleep_until(deadline)).poll(&mut cx);
-                } else {
-                    // warn!("WAIT INDEF");
-                }
+        }
+
+        for (i, device) in self.router.devices.iter().enumerate() {
+            if mask & (1 << i) != 0 {
+                device.register_waker(waker);
             }
         }
     }

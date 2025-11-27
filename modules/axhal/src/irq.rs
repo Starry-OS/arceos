@@ -1,6 +1,6 @@
 //! Interrupt management.
 
-use core::task::Waker;
+use core::sync::atomic::{AtomicPtr, Ordering};
 
 #[cfg(feature = "ipi")]
 pub use axconfig::devices::IPI_IRQ;
@@ -8,14 +8,23 @@ use axcpu::trap::{IRQ, register_trap_handler};
 #[cfg(feature = "ipi")]
 pub use axplat::irq::{IpiTarget, send_ipi};
 pub use axplat::irq::{handle, register, set_enable, unregister};
-use axpoll::PollSet;
 
-static POLL_TABLE: [PollSet; 0x30] = [const { PollSet::new() }; 0x30];
+static IRQ_HOOK: AtomicPtr<()> = AtomicPtr::new(core::ptr::null_mut());
 
-/// Registers a waker for a IRQ interrupt.
-pub fn register_irq_waker(irq: usize, waker: &Waker) {
-    set_enable(irq, true);
-    POLL_TABLE[irq].register(waker);
+/// Register a hook function called after an IRQ is handled.
+///
+/// This function can be called only once; subsequent calls will return false.
+///
+/// TODO: design a better api!
+pub fn register_irq_hook(hook: fn(usize)) -> bool {
+    IRQ_HOOK
+        .compare_exchange(
+            core::ptr::null_mut(),
+            hook as *mut (),
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        )
+        .is_ok()
 }
 
 /// IRQ handler.
@@ -26,10 +35,12 @@ pub fn register_irq_waker(irq: usize, waker: &Waker) {
 #[register_trap_handler(IRQ)]
 pub fn irq_handler(vector: usize) -> bool {
     let guard = kernel_guard::NoPreempt::new();
-    if let Some(irq) = handle(vector)
-        && let Some(set) = POLL_TABLE.get(irq)
-    {
-        set.wake();
+    if let Some(irq) = handle(vector) {
+        let hook = IRQ_HOOK.load(Ordering::SeqCst);
+        if !hook.is_null() {
+            let hook = unsafe { core::mem::transmute::<*mut (), fn(usize)>(hook) };
+            hook(irq);
+        }
     }
     drop(guard); // rescheduling may occur when preemption is re-enabled.
     true

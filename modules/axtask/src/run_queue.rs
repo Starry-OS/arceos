@@ -1,11 +1,14 @@
 #[cfg(feature = "smp")]
 use alloc::sync::Weak;
 use alloc::{collections::VecDeque, sync::Arc};
-use core::{mem::MaybeUninit, task::Poll};
+use core::{
+    mem::MaybeUninit,
+    task::{Context, Poll},
+};
 
 use axhal::percpu::this_cpu_id;
 use axsched::BaseScheduler;
-use futures::{future::poll_fn, task::AtomicWaker};
+use futures_util::{future::poll_fn, task::AtomicWaker};
 use kernel_guard::BaseGuard;
 use kspin::SpinRaw;
 use lazyinit::LazyInit;
@@ -52,7 +55,6 @@ percpu_static! {
 /// ensure safe usage.
 static mut RUN_QUEUES: [MaybeUninit<&'static mut AxRunQueue>; axconfig::plat::CPU_NUM] =
     [ARRAY_REPEAT_VALUE; axconfig::plat::CPU_NUM];
-
 #[allow(clippy::declare_interior_mutable_const)] // It's ok because it's used only for initialization `RUN_QUEUES`.
 const ARRAY_REPEAT_VALUE: MaybeUninit<&'static mut AxRunQueue> = MaybeUninit::uninit();
 
@@ -384,7 +386,8 @@ impl<G: BaseGuard> CurrentRunQueueRef<'_, G> {
             }
             axhal::power::system_off();
         } else {
-            curr.exit(exit_code);
+            // Notify the joiner task.
+            curr.notify_exit(exit_code);
 
             // Safety: it is called from
             // `current_run_queue::<NoPreemptIrqSave>().exit_current(exit_code)`,
@@ -413,35 +416,25 @@ impl<G: BaseGuard> CurrentRunQueueRef<'_, G> {
     ///        task.
     ///     4. The lock of the wait queue will be released explicitly after
     ///        current task is pushed into it.
-    pub fn blocked_resched(&mut self, before_block: impl FnOnce(AxTaskRef)) {
+    pub fn blocked_resched(&mut self) {
         let curr = &self.current_task;
         assert!(curr.is_running());
         assert!(!curr.is_idle());
-
-        // we must not block current task with preemption disabled.
-        // Current expected preempt count is 2.
-        // 1 for `NoPreemptIrqSave`, 1 for wait queue's `SpinNoIrq`.
-        // #[cfg(feature = "preempt")]
-        // assert!(curr.can_preempt(2));
 
         // Mark the task as blocked, this has to be done before adding it to the wait
         // queue while holding the lock of the wait queue.
         curr.set_state(TaskState::Blocked);
 
-        before_block(curr.clone());
+        // we must not block current task with preemption disabled.
+        // Current expected preempt count is 1 for `NoPreemptIrqSave`.
+        #[cfg(feature = "preempt")]
+        assert!(curr.can_preempt(1));
 
         // Current task's state has been changed to `Blocked` and added to the wait
         // queue. Note that the state may have been set as `Ready` in
         // `unblock_task()`, see `unblock_task()` for details.
 
         debug!("task block: {}", curr.id_name());
-        #[cfg(feature = "preempt")]
-        {
-            // TODO(mivik): magic little hack. why?
-            assert!(curr.can_preempt(1));
-            curr.disable_preempt();
-            curr.enable_preempt(true);
-        }
         self.inner.resched();
     }
 
@@ -458,7 +451,7 @@ impl AxRunQueue {
     /// The run queue is initialized with a per-CPU gc task in its scheduler.
     fn new(cpu_id: usize) -> Self {
         let gc_task = TaskInner::new(
-            || block_on(gc_entry()),
+            || block_on(poll_fn(poll_gc)),
             "gc".into(),
             axconfig::TASK_STACK_SIZE,
         )
@@ -603,41 +596,44 @@ impl AxRunQueue {
     }
 }
 
-async fn gc_entry() -> ! {
-    poll_fn(|cx| {
-        loop {
-            // Drop all exited tasks and recycle resources.
-            let n = EXITED_TASKS.with_current(|exited_tasks| exited_tasks.len());
-            for _ in 0..n {
-                // Do not do the slow drops in the critical section.
-                let task = EXITED_TASKS.with_current(|exited_tasks| exited_tasks.pop_front());
-                if let Some(task) = task {
-                    match Arc::try_unwrap(task) {
-                        Ok(task) => {
-                            // If I'm the last holder of the task, drop it immediately.
-                            drop(task);
-                        }
-                        Err(task) => {
-                            // Otherwise (e.g, `switch_to` is not compeleted, held by the
-                            // joiner, etc), push it back and wait for them to drop first.
-                            EXITED_TASKS.with_current(|exited_tasks| exited_tasks.push_back(task));
-                        }
-                    }
+fn poll_gc(cx: &mut Context<'_>) -> Poll<()> {
+    loop {
+        // Drop all exited tasks and recycle resources.
+        let n = EXITED_TASKS.with_current(|exited_tasks| exited_tasks.len());
+        for _ in 0..n {
+            // Do not do the slow drops in the critical section.
+            let Some(task) = EXITED_TASKS.with_current(|exited_tasks| exited_tasks.pop_front())
+            else {
+                continue;
+            };
+            match Arc::try_unwrap(task) {
+                Ok(task) => {
+                    // If I'm the last holder of the task, drop it immediately.
+                    drop(task);
+                }
+                Err(task) => {
+                    // Otherwise (e.g, `switch_to` is not compeleted, held by the
+                    // joiner, etc), push it back and wait for them to drop first.
+                    EXITED_TASKS.with_current(|exited_tasks| exited_tasks.push_back(task));
                 }
             }
-            unsafe { WAIT_FOR_EXIT.current_ref_raw() }.register(cx.waker());
-
-            // New tasks might be added during the above section, recheck it to
-            // prevent us from sleeping indefinitely.
-            if EXITED_TASKS.with_current(|exited_tasks| exited_tasks.is_empty()) {
-                break;
-            }
-
-            crate::yield_now();
         }
-        Poll::Pending
-    })
-    .await
+        // Note: we cannot block current task with preemption disabled,
+        // use `current_ref_raw` to get the `WAIT_FOR_EXIT`'s reference here to avoid
+        // the use of `NoPreemptGuard`. Since gc task is pinned to the current
+        // CPU, there is no affection if the gc task is preempted during the process.
+        unsafe { WAIT_FOR_EXIT.current_ref_raw() }.register(cx.waker());
+
+        // New tasks might be added during the above section, recheck it to
+        // prevent us from sleeping indefinitely.
+        if EXITED_TASKS.with_current(|exited_tasks| exited_tasks.is_empty()) {
+            break;
+        }
+
+        crate::yield_now();
+    }
+
+    Poll::Pending
 }
 
 /// The task routine for migrating the current task to the correct CPU.
@@ -664,7 +660,6 @@ pub(crate) unsafe fn clear_prev_task_on_cpu() {
             .set_on_cpu(false);
     }
 }
-
 pub(crate) fn init() {
     let cpu_id = this_cpu_id();
 
