@@ -1,6 +1,6 @@
 use alloc::collections::BTreeMap;
 use core::{
-    fmt,
+    fmt, mem,
     pin::Pin,
     task::{Context, Poll, Waker},
     time::Duration,
@@ -8,7 +8,7 @@ use core::{
 
 use axerrno::AxError;
 use axhal::time::{TimeValue, wall_time};
-use futures_util::{FutureExt, select_biased};
+use futures_util::{FutureExt, future::FusedFuture, select_biased};
 use kspin::SpinNoIrq;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -17,20 +17,9 @@ struct TimerKey {
     key: u64,
 }
 
-enum TimerState {
-    Active(Option<Waker>),
-    Completed,
-}
-
-impl Default for TimerState {
-    fn default() -> Self {
-        TimerState::Active(None)
-    }
-}
-
 struct TimerRuntime {
     key: u64,
-    wheel: BTreeMap<TimerKey, TimerState>,
+    wheel: BTreeMap<TimerKey, Waker>,
 }
 
 impl TimerRuntime {
@@ -50,24 +39,20 @@ impl TimerRuntime {
             deadline,
             key: self.key,
         };
-        self.wheel.insert(key, TimerState::default());
-        self.key += 1;
+        self.wheel.insert(key, Waker::noop().clone());
+        self.key = self.key.wrapping_add(1);
 
         Some(key)
     }
 
     fn update_waker(&mut self, key: &TimerKey, waker: Waker) {
         if let Some(w) = self.wheel.get_mut(key) {
-            *w = TimerState::Active(Some(waker));
+            *w = waker;
         }
     }
 
     fn is_completed(&mut self, key: &TimerKey) -> bool {
-        let completed = matches!(self.wheel.get(key), Some(TimerState::Completed));
-        if completed {
-            self.wheel.remove(key);
-        }
-        completed
+        !self.wheel.contains_key(key)
     }
 
     fn cancel(&mut self, key: &TimerKey) {
@@ -79,16 +64,14 @@ impl TimerRuntime {
             return;
         }
 
-        self.wheel
-            .iter_mut()
-            .take_while(|(k, _)| k.deadline <= wall_time())
-            .for_each(|(_, v)| {
-                if let TimerState::Active(Some(waker)) =
-                    core::mem::replace(v, TimerState::Completed)
-                {
-                    waker.wake();
-                }
-            });
+        let new_wheel = self.wheel.split_off(&TimerKey {
+            deadline: wall_time(),
+            key: u64::MAX,
+        });
+        let outdated = mem::replace(&mut self.wheel, new_wheel);
+        outdated.into_iter().for_each(|(_, v)| {
+            v.wake();
+        });
     }
 }
 
@@ -114,6 +97,12 @@ impl Future for TimerFuture {
             runtime.update_waker(&self.0, cx.waker().clone());
             Poll::Pending
         }
+    }
+}
+
+impl FusedFuture for TimerFuture {
+    fn is_terminated(&self) -> bool {
+        TIMER_RUNTIME.lock().is_completed(&self.0)
     }
 }
 
@@ -172,9 +161,12 @@ pub async fn timeout_at<F: IntoFuture>(
     f: F,
 ) -> Result<F::Output, Elapsed> {
     if let Some(deadline) = deadline {
+        let Some(key) = TIMER_RUNTIME.lock().add(deadline) else {
+            return Err(Elapsed(()));
+        };
         select_biased! {
             res = f.into_future().fuse() => Ok(res),
-            _ = sleep_until(deadline).fuse() => Err(Elapsed(())),
+            _ = TimerFuture(key) => Err(Elapsed(())),
         }
     } else {
         Ok(f.await)
