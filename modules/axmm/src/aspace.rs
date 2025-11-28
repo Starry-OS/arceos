@@ -33,6 +33,11 @@ impl AddrSpace {
         self.va_range.end
     }
 
+    /// Returns the memory set of the address space.
+    pub fn memoryset(&self) -> &MemorySet<Backend> {
+        &self.areas
+    }
+
     /// Returns the address space size.
     pub fn size(&self) -> usize {
         self.va_range.size()
