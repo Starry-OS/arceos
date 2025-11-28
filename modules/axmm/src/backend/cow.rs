@@ -1,8 +1,9 @@
-use alloc::{boxed::Box, collections::btree_map::BTreeMap, sync::Arc};
+use alloc::{self, boxed::Box, collections::btree_map::BTreeMap, sync::Arc};
 use core::slice;
 
 use axerrno::{AxError, AxResult};
 use axfs_ng::FileBackend;
+use axfs_ng_vfs::Location;
 use axhal::{
     mem::phys_to_virt,
     paging::{MappingFlags, PageSize, PageTableMut, PagingError},
@@ -112,6 +113,15 @@ impl CowBackend {
         }
 
         Ok(())
+    }
+
+    /// Returns the location of the backing file, if any.
+    pub fn location(&self) -> Option<&Location> {
+        self.file.as_ref().map(|(file, ..)| file.location())
+    }
+
+    pub fn file_offset(&self) -> Option<usize> {
+        self.file.as_ref().map(|(_, offset, _)| (*offset as usize))
     }
 }
 

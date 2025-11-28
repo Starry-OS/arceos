@@ -7,6 +7,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 use axerrno::{AxError, AxResult};
 use axfs_ng::{CachedFile, FileFlags};
+use axfs_ng_vfs::Location;
 use axhal::paging::{MappingFlags, PageSize, PageTableMut, PagingError};
 use axsync::Mutex;
 use memory_addr::{PAGE_SIZE_4K, VirtAddr, VirtAddrRange};
@@ -102,6 +103,14 @@ impl FileBackend {
 
     pub fn futex_handle(&self) -> Weak<()> {
         Arc::downgrade(&self.0.futex_handle)
+    }
+
+    pub fn location(&self) -> &Location {
+        self.0.cache.location()
+    }
+
+    pub fn file_offset(&self) -> usize {
+        (self.0.offset_page as usize) * PAGE_SIZE_4K
     }
 }
 

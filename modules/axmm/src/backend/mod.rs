@@ -1,5 +1,9 @@
 //! Memory mapping backends.
-use alloc::{boxed::Box, sync::Arc};
+use alloc::{
+    boxed::Box,
+    string::{String, ToString},
+    sync::Arc,
+};
 
 use axalloc::{UsageKind, global_allocator};
 use axerrno::{AxError, AxResult};
@@ -127,6 +131,42 @@ pub enum Backend {
     Cow(cow::CowBackend),
     Shared(shared::SharedBackend),
     File(file::FileBackend),
+}
+
+impl Backend {
+    /// Returns a string representing the location of the backend(for
+    /// /proc/[pid]/maps).
+    pub fn location(&self) -> String {
+        match self {
+            Backend::Linear(_) => "[anon]".to_string(),
+            Backend::Cow(b) => {
+                let loc = b.location();
+                if let Some(loc) = loc {
+                    return loc
+                        .absolute_path()
+                        .map(|pb| pb.to_string())
+                        .unwrap_or("unknown".to_string());
+                }
+                "[anon]".to_string()
+            }
+            Backend::Shared(_) => "[anon]".to_string(),
+            Backend::File(b) => {
+                let loc = b.location();
+                loc.absolute_path()
+                    .map(|pb| pb.to_string())
+                    .unwrap_or("unknown".to_string())
+            }
+        }
+    }
+
+    /// Returns the file offset if applicable.(for /proc/[pid]/maps).
+    pub fn file_offset(&self) -> Option<usize> {
+        match self {
+            Backend::File(b) => Some(b.file_offset()),
+            Backend::Cow(b) => b.file_offset(),
+            _ => None,
+        }
+    }
 }
 
 impl MappingBackend for Backend {
