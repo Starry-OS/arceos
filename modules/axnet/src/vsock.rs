@@ -5,6 +5,7 @@ pub(crate) mod stream;
 
 use core::task::Context;
 
+pub use axdriver::prelude::{VsockAddr, VsockConnId};
 use axerrno::{AxError, AxResult};
 use axio::{Buf, BufMut};
 use axpoll::{IoEvents, Pollable};
@@ -15,21 +16,6 @@ use crate::{
     RecvOptions, SendOptions, Shutdown, Socket, SocketAddrEx, SocketOps,
     options::{Configurable, GetSocketOption, SetSocketOption},
 };
-
-/// Virtio socket address.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct VsockAddr {
-    /// Context ID
-    pub cid: u32,
-    /// Port number
-    pub port: u32,
-}
-
-impl VsockAddr {
-    pub fn to_device_addr(&self) -> AxResult<(u32, u32)> {
-        Ok((self.cid, self.port))
-    }
-}
 
 /// Abstract transport trait for Unix sockets.
 #[enum_dispatch]

@@ -5,36 +5,10 @@ use axpoll::PollSet;
 use axsync::Mutex;
 use ringbuf::{HeapCons, HeapProd, HeapRb, traits::*};
 
-use super::VsockAddr;
+use super::{VsockAddr, VsockConnId};
 
 pub const VSOCK_RX_BUFFER_SIZE: usize = 64 * 1024; // 64KB receive buffer
 const VSOCK_ACCEPT_QUEUE_SIZE: usize = 128; // accept queue size
-
-/// connection unique identifier
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct ConnectionId {
-    pub local_port: u32,
-    pub peer_cid: u32,
-    pub peer_port: u32,
-}
-
-impl ConnectionId {
-    pub fn new(local_port: u32, peer_cid: u32, peer_port: u32) -> Self {
-        Self {
-            local_port,
-            peer_cid,
-            peer_port,
-        }
-    }
-
-    pub fn listening(local_port: u32) -> Self {
-        Self {
-            local_port,
-            peer_cid: 0,
-            peer_port: 0,
-        }
-    }
-}
 
 /// connection states
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -228,13 +202,13 @@ impl Connection {
 
 /// A fixed-size accept queue
 pub struct AcceptQueue {
-    producer: ringbuf::HeapProd<ConnectionId>,
-    consumer: ringbuf::HeapCons<ConnectionId>,
+    producer: ringbuf::HeapProd<VsockConnId>,
+    consumer: ringbuf::HeapCons<VsockConnId>,
 }
 
 impl AcceptQueue {
     pub fn new() -> Self {
-        let rb = HeapRb::<ConnectionId>::new(VSOCK_ACCEPT_QUEUE_SIZE);
+        let rb = HeapRb::<VsockConnId>::new(VSOCK_ACCEPT_QUEUE_SIZE);
         let (producer, consumer) = rb.split();
         Self { producer, consumer }
     }
@@ -243,14 +217,14 @@ impl AcceptQueue {
         self.consumer.is_empty()
     }
 
-    pub fn push(&mut self, conn_id: ConnectionId) -> AxResult<()> {
+    pub fn push(&mut self, conn_id: VsockConnId) -> AxResult<()> {
         match self.producer.try_push(conn_id) {
             Ok(_) => Ok(()),
             Err(_) => ax_bail!(ResourceBusy, "accept queue full"),
         }
     }
 
-    pub fn pop(&mut self) -> Option<ConnectionId> {
+    pub fn pop(&mut self) -> Option<VsockConnId> {
         self.consumer.try_pop()
     }
 }
@@ -282,7 +256,7 @@ impl ListenQueue {
 
 /// Global connection manager
 pub struct VsockConnectionManager {
-    connections: BTreeMap<ConnectionId, Arc<Mutex<Connection>>>,
+    connections: BTreeMap<VsockConnId, Arc<Mutex<Connection>>>,
     listen_queues: BTreeMap<u32, Arc<Mutex<ListenQueue>>>,
     next_ephemeral_port: u32,
 }
@@ -356,7 +330,7 @@ impl VsockConnectionManager {
     }
 
     /// accept a connection
-    pub fn accept(&mut self, port: u32) -> AxResult<(ConnectionId, VsockAddr)> {
+    pub fn accept(&mut self, port: u32) -> AxResult<(VsockConnId, VsockAddr)> {
         let queue = self.listen_queues.get(&port).ok_or(AxError::InvalidInput)?;
 
         let conn_id = queue.lock().accept_queue.pop().ok_or(AxError::WouldBlock)?;
@@ -372,7 +346,7 @@ impl VsockConnectionManager {
     /// create a new connection
     pub fn create_connection(
         &mut self,
-        conn_id: ConnectionId,
+        conn_id: VsockConnId,
         local_addr: VsockAddr,
         peer_addr: Option<VsockAddr>,
         state: ConnectionState,
@@ -393,13 +367,13 @@ impl VsockConnectionManager {
     }
 
     /// get a connection by id
-    pub fn get_connection(&self, conn_id: &ConnectionId) -> Option<Arc<Mutex<Connection>>> {
-        self.connections.get(conn_id).cloned()
+    pub fn get_connection(&self, conn_id: VsockConnId) -> Option<Arc<Mutex<Connection>>> {
+        self.connections.get(&conn_id).cloned()
     }
 
     /// remove a connection
-    pub fn remove_connection(&mut self, conn_id: &ConnectionId) {
-        if let Some(conn) = self.connections.remove(conn_id) {
+    pub fn remove_connection(&mut self, conn_id: VsockConnId) {
+        if let Some(conn) = self.connections.remove(&conn_id) {
             let conn = conn.lock();
             crate::device::stop_vsock_poll();
             debug!(
@@ -410,14 +384,13 @@ impl VsockConnectionManager {
     }
 
     /// handle a new connection request (by driver event)
-    pub fn on_connection_request(&mut self, local_port: u32, peer_addr: VsockAddr) -> AxResult<()> {
+    pub fn on_connection_request(&mut self, conn_id: VsockConnId) -> AxResult<()> {
         let queue = self
             .listen_queues
-            .get(&local_port)
+            .get(&conn_id.local_port)
             .ok_or(AxError::NotFound)?
             .clone();
 
-        let conn_id = ConnectionId::new(local_port, peer_addr.cid, peer_addr.port);
         let local_addr = queue.lock().local_addr;
 
         // check if connection already exists
@@ -430,7 +403,7 @@ impl VsockConnectionManager {
         self.create_connection(
             conn_id,
             local_addr,
-            Some(peer_addr),
+            Some(conn_id.peer_addr),
             ConnectionState::Connected,
         );
 
@@ -439,11 +412,11 @@ impl VsockConnectionManager {
         if let Err(_) = queue_guard.accept_queue.push(conn_id) {
             info!(
                 "Accept queue full for port {}, dropping connection from {:?}",
-                local_port, peer_addr
+                conn_id.local_port, conn_id.peer_addr
             );
             // full -- remove the connection
             drop(queue_guard);
-            self.remove_connection(&conn_id);
+            self.remove_connection(conn_id);
             return Err(AxError::ResourceBusy);
         }
 
@@ -452,16 +425,16 @@ impl VsockConnectionManager {
 
         trace!(
             "New connection request from {:?} on port {}",
-            peer_addr, local_port
+            conn_id.peer_addr, conn_id.local_port
         );
         Ok(())
     }
 
     /// handle data received (by driver event)
-    pub fn on_data_received(&mut self, conn_id: &ConnectionId, data: &[u8]) -> AxResult<()> {
+    pub fn on_data_received(&mut self, conn_id: VsockConnId, data: &[u8]) -> AxResult<()> {
         let conn = self
             .connections
-            .get(conn_id)
+            .get(&conn_id)
             .ok_or(AxError::NotFound)?
             .clone();
 
@@ -483,8 +456,8 @@ impl VsockConnectionManager {
     }
 
     /// handle disconnection (by driver event)
-    pub fn on_disconnected(&mut self, conn_id: &ConnectionId) -> AxResult<()> {
-        if let Some(conn) = self.connections.get(conn_id) {
+    pub fn on_disconnected(&mut self, conn_id: VsockConnId) -> AxResult<()> {
+        if let Some(conn) = self.connections.get(&conn_id) {
             let mut conn_guard = conn.lock();
             conn_guard.state = ConnectionState::Closed;
             conn_guard.rx_closed = true;
@@ -496,8 +469,8 @@ impl VsockConnectionManager {
     }
 
     /// handle connected event (by driver event)
-    pub fn on_connected(&mut self, conn_id: &ConnectionId) -> AxResult<()> {
-        if let Some(conn) = self.connections.get(conn_id) {
+    pub fn on_connected(&mut self, conn_id: VsockConnId) -> AxResult<()> {
+        if let Some(conn) = self.connections.get(&conn_id) {
             let mut conn_guard = conn.lock();
             conn_guard.state = ConnectionState::Connected;
             conn_guard.wake_connect();

@@ -12,11 +12,11 @@ use crate::{
     general::GeneralOptions,
     options::{Configurable, GetSocketOption, SetSocketOption},
     state::*,
-    vsock::{VsockAddr, VsockTransport, VsockTransportOps},
+    vsock::{VsockAddr, VsockConnId, VsockTransport, VsockTransportOps},
 };
 
 pub struct VsockStreamTransport {
-    conn_id: Mutex<Option<ConnectionId>>,
+    conn_id: Mutex<Option<VsockConnId>>,
     connection: Mutex<Option<Arc<Mutex<Connection>>>>,
     state: StateLock,
     general: GeneralOptions,
@@ -57,7 +57,7 @@ impl VsockTransportOps for VsockStreamTransport {
                 if local_addr.port == 0 {
                     local_addr.port = manager.allocate_port()?;
                 }
-                let conn_id = ConnectionId::listening(local_addr.port);
+                let conn_id = VsockConnId::listening(local_addr.port);
                 let conn =
                     manager.create_connection(conn_id, local_addr, None, ConnectionState::Idle);
 
@@ -106,7 +106,7 @@ impl VsockTransportOps for VsockStreamTransport {
             }
 
             let (conn_id, peer_addr) = manager.accept(local_port)?;
-            let conn = manager.get_connection(&conn_id).ok_or(AxError::NotFound)?;
+            let conn = manager.get_connection(conn_id).ok_or(AxError::NotFound)?;
 
             // create new VsockStreamTransport
             let new_transport = VsockStreamTransport {
@@ -157,7 +157,10 @@ impl VsockTransportOps for VsockStreamTransport {
             };
 
             // create connection
-            let conn_id = ConnectionId::new(local_port, peer_addr.cid, peer_addr.port);
+            let conn_id = VsockConnId {
+                peer_addr,
+                local_port,
+            };
             let conn = manager.create_connection(
                 conn_id,
                 local_addr,
@@ -171,7 +174,7 @@ impl VsockTransportOps for VsockStreamTransport {
             drop(manager);
 
             // driver connect
-            crate::device::vsock_connect(peer_addr.cid, peer_addr.port, local_port)?;
+            crate::device::vsock_connect(conn_id)?;
             debug!("Vsock connecting from {} to {:?}", local_port, peer_addr);
             Ok(())
         })?;
@@ -204,14 +207,7 @@ impl VsockTransportOps for VsockStreamTransport {
         drop(conn_guard);
 
         // now virtio-driver only support non-blocking send
-        let result = src.consume(|chunk| {
-            crate::device::vsock_send(
-                conn_id.peer_cid,
-                conn_id.peer_port,
-                conn_id.local_port,
-                chunk,
-            )
-        });
+        let result = src.consume(|chunk| crate::device::vsock_send(conn_id, chunk));
         conn.lock().add_tx_bytes(result.unwrap_or(0));
         result
     }
@@ -285,11 +281,7 @@ impl VsockTransportOps for VsockStreamTransport {
 
         if let Some(conn_id) = *self.conn_id.lock() {
             if conn.state() == ConnectionState::Connected {
-                crate::device::vsock_disconnect(
-                    conn_id.peer_cid,
-                    conn_id.peer_port,
-                    conn_id.local_port,
-                )?;
+                crate::device::vsock_disconnect(conn_id)?;
             } else if conn.state() == ConnectionState::Listening {
                 VSOCK_CONN_MANAGER.lock().unlisten(conn_id.local_port);
             }
@@ -381,7 +373,7 @@ impl Drop for VsockStreamTransport {
         let _ = self.shutdown(Shutdown::Both);
 
         if let Some(conn_id) = *self.conn_id.lock() {
-            VSOCK_CONN_MANAGER.lock().remove_connection(&conn_id);
+            VSOCK_CONN_MANAGER.lock().remove_connection(conn_id);
         }
     }
 }
