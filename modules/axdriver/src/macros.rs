@@ -80,9 +80,9 @@ macro_rules! for_each_drivers {
             type $drv_type = crate::drivers::RamDiskDriver;
             $code
         }
-        #[cfg(block_dev = "sdmmc-gpt")]
+        #[cfg(block_dev = "sdmmc")]
         {
-            type $drv_type = crate::drivers::SdMmcGptDriver;
+            type $drv_type = crate::drivers::SdMmcDriver;
             $code
         }
         #[cfg(block_dev = "bcm2835-sdhci")]

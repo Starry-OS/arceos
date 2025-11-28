@@ -8,13 +8,7 @@ use axerrno::{AxError, AxResult, ax_bail};
 use axsync::Mutex;
 use axtask::future::{block_on, interruptible};
 
-use crate::{
-    alloc::string::ToString,
-    vsock::{
-        VsockAddr,
-        connection_manager::{ConnectionId, VSOCK_CONN_MANAGER},
-    },
-};
+use crate::{alloc::string::ToString, vsock::connection_manager::VSOCK_CONN_MANAGER};
 
 // we need a global and static only one vsock device
 static VSOCK_DEVICE: Mutex<Option<AxVsockDevice>> = Mutex::new(None);
@@ -137,13 +131,14 @@ fn poll_vsock_interfaces() -> AxResult<bool> {
     let mut guard = VSOCK_DEVICE.lock();
     let dev = guard.as_mut().ok_or(AxError::NotFound)?;
     let mut event_count = 0;
+    let mut buf = alloc::vec![0; 0x1000]; // 4KiB buffer for receiving data
 
     loop {
-        match dev.poll_event() {
+        match dev.poll_event(&mut buf) {
             Ok(None) => break, // no more events
             Ok(Some(event)) => {
                 event_count += 1;
-                handle_vsock_event(event);
+                handle_vsock_event(event, &buf);
             }
             Err(e) => {
                 info!("Failed to poll vsock event: {:?}", e);
@@ -154,32 +149,25 @@ fn poll_vsock_interfaces() -> AxResult<bool> {
     Ok(event_count > 0)
 }
 
-fn handle_vsock_event(event: VsockDriverEvent) {
+fn handle_vsock_event(event: VsockDriverEvent, buf: &[u8]) {
     let mut manager = VSOCK_CONN_MANAGER.lock();
     debug!("Handling vsock event: {:?}", event);
 
     match event {
-        VsockDriverEvent::ConnectionRequest(local_port, peer_cid, peer_port) => {
-            let peer_addr = VsockAddr {
-                cid: peer_cid,
-                port: peer_port,
-            };
-            let _ = manager.on_connection_request(local_port, peer_addr);
+        VsockDriverEvent::ConnectionRequest(conn_id) => {
+            let _ = manager.on_connection_request(conn_id);
         }
 
-        VsockDriverEvent::DataReceived(local_port, peer_cid, peer_port, data) => {
-            let conn_id = ConnectionId::new(local_port, peer_cid, peer_port);
-            let _ = manager.on_data_received(&conn_id, &data);
+        VsockDriverEvent::Received(conn_id, len) => {
+            let _ = manager.on_data_received(conn_id, &buf[..len]);
         }
 
-        VsockDriverEvent::Disconnect(local_port, peer_cid, peer_port) => {
-            let conn_id = ConnectionId::new(local_port, peer_cid, peer_port);
-            let _ = manager.on_disconnected(&conn_id);
+        VsockDriverEvent::Disconnected(conn_id) => {
+            let _ = manager.on_disconnected(conn_id);
         }
 
-        VsockDriverEvent::Connected(local_port, peer_cid, peer_port) => {
-            let conn_id = ConnectionId::new(local_port, peer_cid, peer_port);
-            let _ = manager.on_connected(&conn_id);
+        VsockDriverEvent::Connected(conn_id) => {
+            let _ = manager.on_connected(conn_id);
         }
 
         VsockDriverEvent::Unknown => warn!("Received unknown vsock event"),
@@ -203,28 +191,25 @@ fn map_dev_err(e: DevError) -> AxError {
     }
 }
 
-pub fn vsock_connect(peer_cid: u32, peer_port: u32, src_port: u32) -> AxResult<()> {
+pub fn vsock_connect(conn_id: VsockConnId) -> AxResult<()> {
     let mut guard = VSOCK_DEVICE.lock();
     let dev = guard.as_mut().ok_or(AxError::NotFound)?;
-    dev.connect(peer_cid, peer_port, src_port)
-        .map_err(map_dev_err)
+    dev.connect(conn_id).map_err(map_dev_err)
 }
 
-pub fn vsock_send(peer_cid: u32, peer_port: u32, src_port: u32, buf: &[u8]) -> AxResult<usize> {
+pub fn vsock_send(conn_id: VsockConnId, buf: &[u8]) -> AxResult<usize> {
     let mut guard = VSOCK_DEVICE.lock();
     let dev = guard.as_mut().ok_or(AxError::NotFound)?;
-    dev.send(peer_cid, peer_port, src_port, buf)
-        .map_err(map_dev_err)
+    dev.send(conn_id, buf).map_err(map_dev_err)
 }
 
-pub fn vsock_disconnect(peer_cid: u32, peer_port: u32, src_port: u32) -> AxResult<()> {
+pub fn vsock_disconnect(conn_id: VsockConnId) -> AxResult<()> {
     let mut guard = VSOCK_DEVICE.lock();
     let dev = guard.as_mut().ok_or(AxError::NotFound)?;
-    dev.disconnect(peer_cid, peer_port, src_port)
-        .map_err(map_dev_err)
+    dev.disconnect(conn_id).map_err(map_dev_err)
 }
 
-pub fn vsock_guest_cid() -> AxResult<u32> {
+pub fn vsock_guest_cid() -> AxResult<u64> {
     let mut guard = VSOCK_DEVICE.lock();
     let dev = guard.as_mut().ok_or(AxError::NotFound)?;
     Ok(dev.guest_cid())

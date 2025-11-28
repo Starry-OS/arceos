@@ -6,6 +6,8 @@ use core::{
     task::Context,
 };
 
+#[cfg(feature = "vsock")]
+use axdriver::prelude::VsockAddr;
 use axerrno::{AxError, AxResult, LinuxError};
 use axio::{Buf, BufMut};
 use axpoll::{IoEvents, Pollable};
@@ -13,7 +15,7 @@ use bitflags::bitflags;
 use enum_dispatch::enum_dispatch;
 
 #[cfg(feature = "vsock")]
-use crate::vsock::{VsockAddr, VsockSocket};
+use crate::vsock::VsockSocket;
 use crate::{
     options::{Configurable, GetSocketOption, SetSocketOption},
     tcp::TcpSocket,

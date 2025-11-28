@@ -67,37 +67,35 @@ register_vsock_driver!(
 
 cfg_if::cfg_if! {
     if #[cfg(block_dev = "ramdisk")] {
-        use axdriver_block::ramdisk::RamDisk;
-        use axhal::mem::phys_to_virt;
-
         pub struct RamDiskDriver;
-        register_block_driver!(RamDiskDriver, RamDisk);
+        register_block_driver!(RamDiskDriver, axdriver_block::ramdisk::RamDisk);
 
         impl DriverProbe for RamDiskDriver {
             fn probe_global() -> Option<AxDeviceEnum> {
-                let (start, size) = axconfig::devices::INITRD_RANGE;
-                let initrd = unsafe { RamDisk::new(phys_to_virt(start.into()).into(), size) };
-                Some(AxDeviceEnum::from_block(initrd))
+                // TODO: format RAM disk
+                Some(AxDeviceEnum::from_block(
+                    axdriver_block::ramdisk::RamDisk::new(0x100_0000), // 16 MiB
+                ))
             }
         }
     }
 }
 
 cfg_if::cfg_if! {
-    if #[cfg(block_dev = "sdmmc-gpt")] {
-        use axdriver_block::{gpt::GptPartitionDev, sdmmc::SdMmcDriver};
+    if #[cfg(block_dev = "sdmmc")] {
         use axhal::mem::phys_to_virt;
 
-        pub struct SdMmcGptDriver;
-        register_block_driver!(SdMmcGptDriver, GptPartitionDev<SdMmcDriver>);
+        pub struct SdMmcDriver;
+        register_block_driver!(SdMmcDriver, axdriver_block::sdmmc::SdMmcDriver);
 
-        impl DriverProbe for SdMmcGptDriver {
+        impl DriverProbe for SdMmcDriver {
             fn probe_global() -> Option<AxDeviceEnum> {
-                let root = "root".parse().unwrap();
-                let sdmmc = unsafe { SdMmcDriver::new(phys_to_virt(axconfig::devices::SDMMC_PADDR.into()).into()) };
-                GptPartitionDev::try_new(sdmmc, |_, part| part.name == root)
-                    .ok()
-                    .map(AxDeviceEnum::from_block)
+                let sdmmc = unsafe {
+                    axdriver_block::sdmmc::SdMmcDriver::new(
+                        phys_to_virt(axconfig::devices::SDMMC_PADDR.into()).into(),
+                    )
+                };
+                Some(AxDeviceEnum::from_block(sdmmc))
             }
         }
     }
