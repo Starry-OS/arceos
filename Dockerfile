@@ -3,7 +3,10 @@ FROM rust:alpine
 RUN apk add --no-cache \
     build-base qemu-system-x86_64 qemu-system-loongarch64 \
     qemu-system-riscv64 qemu-system-aarch64 \
-    clang-dev bash coreutils
+    clang-dev bash coreutils wget python3 xz \
+    py3-pip samurai bzip2 meson make \
+    git pkgconf glib-dev libslirp \
+    ca-certificates openssl diffutils findutils
 
 RUN cargo install cargo-binutils axconfig-gen cargo-axplat
 
