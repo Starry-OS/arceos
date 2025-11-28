@@ -6,7 +6,7 @@ RUN apk add --no-cache \
     clang-dev bash coreutils wget python3 xz \
     py3-pip samurai bzip2 meson make \
     git pkgconf glib-dev libslirp \
-    ca-certificates openssl diffutils findutils
+    ca-certificates openssl diffutils findutils vim cmake
 
 RUN cargo install cargo-binutils axconfig-gen cargo-axplat
 
