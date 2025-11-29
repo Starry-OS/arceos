@@ -14,10 +14,10 @@ COPY rust-toolchain.toml /rust-toolchain.toml
 
 RUN rustc --version
 
-RUN wget https://musl.cc/aarch64-linux-musl-cross.tgz \
-    && wget https://musl.cc/riscv64-linux-musl-cross.tgz \
-    && wget https://musl.cc/x86_64-linux-musl-cross.tgz \
-    && wget https://github.com/LoongsonLab/oscomp-toolchains-for-oskernel/releases/download/loongarch64-linux-musl-cross-gcc-13.2.0/loongarch64-linux-musl-cross.tgz \
+RUN wget https://github.com/arceos-org/setup-musl/releases/download/prebuilt/aarch64-linux-musl-cross.tgz \
+    && wget https://github.com/arceos-org/setup-musl/releases/download/prebuilt/riscv64-linux-musl-cross.tgz \
+    && wget https://github.com/arceos-org/setup-musl/releases/download/prebuilt/x86_64-linux-musl-cross.tgz \
+    && wget https://github.com/arceos-org/setup-musl/releases/download/prebuilt/loongarch64-linux-musl-cross.tgz \
     && tar zxf aarch64-linux-musl-cross.tgz \
     && tar zxf riscv64-linux-musl-cross.tgz \
     && tar zxf x86_64-linux-musl-cross.tgz \
