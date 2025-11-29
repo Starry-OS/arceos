@@ -19,6 +19,12 @@ members = [
     "modules/axipi",
 
     "api/axfeat",
+    
+    "examples/helloworld",
+    "examples/helloworld-myplat",
+    "examples/httpclient",
+    "examples/httpserver",
+    "examples/shell",
 ]
 
 [workspace.package]
