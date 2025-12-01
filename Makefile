@@ -143,6 +143,13 @@ AR := $(CROSS_COMPILE)ar
 RANLIB := $(CROSS_COMPILE)ranlib
 LD := rust-lld -flavor gnu
 
+# Export build tools for cargo build scripts (e.g., lwext4_rust)
+# These are also explicitly passed in cargo.mk to ensure they reach build.rs
+export CC
+export AR
+export RANLIB
+export CROSS_COMPILE
+
 OBJDUMP ?= rust-objdump -d --print-imm-hex --x86-asm-syntax=intel
 OBJCOPY ?= rust-objcopy --binary-architecture=$(ARCH)
 

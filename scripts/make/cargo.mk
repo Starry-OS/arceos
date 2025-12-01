@@ -26,7 +26,8 @@ ifeq ($(MAKECMDGOALS), doc_check_missing)
 endif
 
 define cargo_build
-  $(call run_cmd,cargo -C $(1) build,$(build_args) --features "$(strip $(2))")
+  $(eval TARGET_ENV := $(shell echo $(TARGET) | tr '[:lower:]' '[:upper:]' | tr '-' '_'))
+  $(call run_cmd,TARGET=$(TARGET) CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) CROSS_COMPILE=$(CROSS_COMPILE) CC_$(TARGET_ENV)=$(CC) AR_$(TARGET_ENV)=$(AR) RANLIB_$(TARGET_ENV)=$(RANLIB) cargo -C $(1) build,$(build_args) --features "$(strip $(2))")
 endef
 
 clippy_args := -A clippy::new_without_default -A unsafe_op_in_unsafe_fn
