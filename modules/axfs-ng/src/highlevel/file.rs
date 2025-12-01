@@ -218,16 +218,12 @@ impl OpenOptions {
     }
 
     pub fn open_loc(&self, loc: Location) -> VfsResult<OpenResult> {
-        if !self.is_valid() {
-            return Err(VfsError::InvalidInput);
-        }
+        self.check_options()?;
         self._open(loc)
     }
 
     pub fn open(&self, context: &FsContext, path: impl AsRef<Path>) -> VfsResult<OpenResult> {
-        if !self.is_valid() {
-            return Err(VfsError::InvalidInput);
-        }
+        self.check_options()?;
 
         let loc = match context.resolve_parent(path.as_ref()) {
             Ok((parent, name)) => {
@@ -272,24 +268,14 @@ impl OpenOptions {
         })
     }
 
-    pub(crate) fn is_valid(&self) -> bool {
+    pub(crate) fn check_options(&self) -> VfsResult<()> {
         if !self.read && !self.write && !self.append {
-            return true;
+            return Err(VfsError::InvalidInput);
         }
-        match (self.write, self.append) {
-            (true, false) => {}
-            (false, false) => {
-                if self.truncate || self.create || self.create_new {
-                    return false;
-                }
-            }
-            (_, true) => {
-                if self.truncate && !self.create_new {
-                    return false;
-                }
-            }
+        if self.create_new && !self.create {
+            return Err(VfsError::AlreadyExists);
         }
-        true
+        Ok(())
     }
 }
 
