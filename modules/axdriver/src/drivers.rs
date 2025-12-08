@@ -98,6 +98,51 @@ cfg_if::cfg_if! {
 }
 
 cfg_if::cfg_if! {
+    if #[cfg(block_dev = "ahci")] {
+        pub struct AhciHalImpl;
+        use axalloc::{UsageKind, global_allocator};
+        use axhal::mem::{phys_to_virt, virt_to_phys, PAGE_SIZE_4K};
+
+        impl simple_ahci::Hal for AhciHalImpl {
+            fn virt_to_phys(va: usize) -> usize {
+                axhal::mem::virt_to_phys(va.into()).as_usize()
+            }
+
+            fn current_ms() -> u64 {
+                axhal::time::monotonic_time_nanos() / 1_000_000
+            }
+
+            fn flush_dcache() {
+                // Most architectures don't need explicit dcache flush for DMA
+                // For architectures that need it, add the appropriate call here
+            }
+        }
+
+        pub struct AhciDriver;
+        register_block_driver!(AhciDriver, axdriver_block::ahci::AhciDriver<AhciHalImpl>);
+
+        impl DriverProbe for AhciDriver {
+            fn probe_global() -> Option<AxDeviceEnum> {
+                // AHCI base address for 2k1000la: 0x400e0000
+                // TODO: read from axconfig::devices::AHCI_PADDR when available
+                #[cfg(target_arch = "loongarch64")]
+                const AHCI_PADDR: usize = 0x400e_0000;
+                #[cfg(not(target_arch = "loongarch64"))]
+                const AHCI_PADDR: usize = axconfig::devices::AHCI_PADDR;
+
+                let ahci = unsafe {
+                    axdriver_block::ahci::AhciDriver::<AhciHalImpl>::try_new(
+                        axhal::mem::phys_to_virt(AHCI_PADDR.into()).into(),
+                    )?
+                };
+                Some(AxDeviceEnum::from_block(ahci))
+            }
+        }
+    }
+}
+
+
+cfg_if::cfg_if! {
     if #[cfg(block_dev = "bcm2835-sdhci")]{
         pub struct BcmSdhciDriver;
         register_block_driver!(BcmSdhciDriver, axdriver_block::bcm2835sdhci::SDHCIDriver);
