@@ -141,7 +141,6 @@ cfg_if::cfg_if! {
     }
 }
 
-
 cfg_if::cfg_if! {
     if #[cfg(block_dev = "bcm2835-sdhci")]{
         pub struct BcmSdhciDriver;
