@@ -123,16 +123,9 @@ cfg_if::cfg_if! {
 
         impl DriverProbe for AhciDriver {
             fn probe_global() -> Option<AxDeviceEnum> {
-                // AHCI base address for 2k1000la: 0x400e0000
-                // TODO: read from axconfig::devices::AHCI_PADDR when available
-                #[cfg(target_arch = "loongarch64")]
-                const AHCI_PADDR: usize = 0x400e_0000;
-                #[cfg(not(target_arch = "loongarch64"))]
-                const AHCI_PADDR: usize = axconfig::devices::AHCI_PADDR;
-
                 let ahci = unsafe {
                     axdriver_block::ahci::AhciDriver::<AhciHalImpl>::try_new(
-                        axhal::mem::phys_to_virt(AHCI_PADDR.into()).into(),
+                        axhal::mem::phys_to_virt(axconfig::devices::AHCI_PADDR.into()).into(),
                     )?
                 };
                 Some(AxDeviceEnum::from_block(ahci))
