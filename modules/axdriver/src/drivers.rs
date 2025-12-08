@@ -100,9 +100,6 @@ cfg_if::cfg_if! {
 cfg_if::cfg_if! {
     if #[cfg(block_dev = "ahci")] {
         pub struct AhciHalImpl;
-        use axalloc::{UsageKind, global_allocator};
-        use axhal::mem::{phys_to_virt, virt_to_phys, PAGE_SIZE_4K};
-
         impl simple_ahci::Hal for AhciHalImpl {
             fn virt_to_phys(va: usize) -> usize {
                 axhal::mem::virt_to_phys(va.into()).as_usize()
