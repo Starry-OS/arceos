@@ -100,7 +100,7 @@ cfg_if::cfg_if! {
 cfg_if::cfg_if! {
     if #[cfg(block_dev = "ahci")] {
         pub struct AhciHalImpl;
-        impl simple_ahci::Hal for AhciHalImpl {
+        impl axdriver_block::ahci::AhciHal for AhciHalImpl {
             fn virt_to_phys(va: usize) -> usize {
                 axhal::mem::virt_to_phys(va.into()).as_usize()
             }

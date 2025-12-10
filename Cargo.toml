@@ -71,14 +71,14 @@ allocator = { git = "https://github.com/arceos-org/allocator.git", tag = "v0.1.2
     "axerrno",
 ] }
 axbacktrace = "0.1"
-axdriver_base = { git = "https://github.com/arceos-org/axdriver_crates.git", rev = "e7b4c66" }
-axdriver_block = { git = "https://github.com/arceos-org/axdriver_crates.git", rev = "e7b4c66" }
-axdriver_display = { git = "https://github.com/arceos-org/axdriver_crates.git", rev = "e7b4c66" }
-axdriver_input = { git = "https://github.com/arceos-org/axdriver_crates.git", rev = "e7b4c66" }
-axdriver_net = { git = "https://github.com/arceos-org/axdriver_crates.git", rev = "e7b4c66" }
-axdriver_pci = { git = "https://github.com/arceos-org/axdriver_crates.git", rev = "e7b4c66" }
-axdriver_virtio = { git = "https://github.com/arceos-org/axdriver_crates.git", rev = "e7b4c66" }
-axdriver_vsock = { git = "https://github.com/arceos-org/axdriver_crates.git", rev = "e7b4c66" }
+axdriver_base = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "dev-v01" }
+axdriver_block = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "dev-v01" }
+axdriver_display = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "dev-v01" }
+axdriver_input = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "dev-v01" }
+axdriver_net = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "dev-v01" }
+axdriver_pci = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "dev-v01" }
+axdriver_virtio = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "dev-v01" }
+axdriver_vsock = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "dev-v01" }
 simple-ahci = { git = "https://github.com/Starry-OS/simple-ahci.git", rev = "36d0979" }
 axerrno = "0.2"
 axfs-ng-vfs = "0.1"
