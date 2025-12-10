@@ -112,6 +112,7 @@ cfg_if::cfg_if! {
             fn flush_dcache() {
                 #[cfg(target_arch = "loongarch64")]
                 unsafe {
+                    // LoongArch64: Ensure data cache operations are synchronized for AHCI DMA coherency.
                     core::arch::asm!("dbar 0");
                 }
             }
