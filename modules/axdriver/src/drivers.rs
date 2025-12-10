@@ -110,8 +110,10 @@ cfg_if::cfg_if! {
             }
 
             fn flush_dcache() {
-                // Most architectures don't need explicit dcache flush for DMA
-                // For architectures that need it, add the appropriate call here
+                #[cfg(target_arch = "loongarch64")]
+                unsafe {
+                    core::arch::asm!("dbar 0");
+                }
             }
         }
 

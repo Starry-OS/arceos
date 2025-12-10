@@ -17,7 +17,11 @@ build_args := \
   $(build_args-$(MODE)) \
   $(verbose)
 
+# Allow platform-specific RUSTFLAGS from PLAT_RUSTFLAGS
 RUSTFLAGS := -A unsafe_op_in_unsafe_fn
+ifneq ($(PLAT_RUSTFLAGS),)
+  RUSTFLAGS += $(PLAT_RUSTFLAGS)
+endif
 RUSTFLAGS_LINK_ARGS := -C link-arg=-T$(LD_SCRIPT) -C link-arg=-no-pie -C link-arg=-znostart-stop-gc
 RUSTDOCFLAGS := -Z unstable-options --enable-index-page -D rustdoc::broken_intra_doc_links
 

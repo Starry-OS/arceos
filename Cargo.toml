@@ -79,7 +79,7 @@ axdriver_net = { git = "https://github.com/arceos-org/axdriver_crates.git", tag 
 axdriver_pci = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "dev-v01" }
 axdriver_virtio = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "dev-v01" }
 axdriver_vsock = { git = "https://github.com/arceos-org/axdriver_crates.git", tag = "dev-v01" }
-simple-ahci = { git = "https://github.com/Starry-OS/simple-ahci.git", rev = "36d0979" }
+
 axerrno = "0.2"
 axfs-ng-vfs = "0.1"
 axio = { git = "https://github.com/arceos-org/axio.git", tag = "dev-v02" }

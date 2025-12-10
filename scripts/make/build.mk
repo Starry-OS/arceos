@@ -33,9 +33,6 @@ else ifneq ($(filter $(or $(MAKECMDGOALS), $(.DEFAULT_GOAL)), all build run just
     $(if $(V), $(info CFLAGS: "$(CFLAGS)") $(info LDFLAGS: "$(LDFLAGS)"))
   else ifeq ($(APP_TYPE), rust)
     RUSTFLAGS += $(RUSTFLAGS_LINK_ARGS)
-    ifeq ($(MYPLAT), axplat-loongarch64-2k1000la)
-      RUSTFLAGS += -C target-feature=-ual
-    endif
   endif
   ifeq ($(DWARF), y)
     RUSTFLAGS += -C force-frame-pointers -C debuginfo=2 -C strip=none
