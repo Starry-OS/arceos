@@ -230,6 +230,8 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
     while !is_init_ok() {
         core::hint::spin_loop();
     }
+    #[cfg(all(feature = "smp", feature = "ipi"))]
+    axipi::start_secondary_cpus_done();
 
     unsafe { main() };
 
@@ -300,9 +302,12 @@ fn init_interrupt() {
     });
 
     #[cfg(feature = "ipi")]
-    axhal::irq::register(axhal::irq::IPI_IRQ, || {
-        axipi::ipi_handler();
-    });
+    {
+        axipi::init();
+        axhal::irq::register(axhal::irq::IPI_IRQ, || {
+            axipi::ipi_handler();
+        });
+    }
 
     // Enable IRQs before starting app
     axhal::asm::enable_irqs();

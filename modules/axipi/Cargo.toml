@@ -11,6 +11,7 @@ documentation = "https://arceos-org.github.io/arceos/axipi/index.html"
 
 [features]
 default = []
+smp = []
 
 [dependencies]
 axconfig.workspace = true
@@ -19,3 +20,7 @@ kspin.workspace = true
 lazyinit.workspace = true
 log.workspace = true
 percpu.workspace = true
+crate_interface = "0.1.4"
+axcpu = { git = "https://github.com/arceos-org/axcpu.git", tag = "dev-v03" }
+axtask = { workspace = true, features = ["task-ext"] }
+page_table_multiarch.workspace = true

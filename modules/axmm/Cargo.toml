@@ -12,6 +12,7 @@ documentation = "https://arceos-org.github.io/arceos/axmm/index.html"
 [features]
 default = []
 copy = ["page_table_multiarch/copy-from"]
+smp = ["page_table_multiarch/smp"]
 
 [dependencies]
 axalloc = { workspace = true }
