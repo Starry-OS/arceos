@@ -71,7 +71,8 @@ pub fn block_on<F: IntoFuture>(f: F) -> F::Output {
         woke.store(false, Ordering::Release);
         let result = fut.as_mut().poll(&mut cx);
 
-        // Polling the executor to run three async tasks.
+        // Polling the executor to run up to three async tasks
+        // (may run fewer if the queue has fewer ready tasks).
         let _ = executor::run_for(3);
 
         match result {

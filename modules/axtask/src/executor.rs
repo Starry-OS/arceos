@@ -87,13 +87,17 @@ where
     WAKE_COUNT.fetch_add(1, Ordering::Release);
 }
 
-/// Poll one ready task if present.
-pub fn run_once() -> bool {
+/// Polls one ready task if present.
+///
+/// Returns:
+/// - `None`: The ready queue is empty.
+/// - `Some(Poll::Ready(()))`: A task ran and finished.
+/// - `Some(Poll::Pending)`: A task ran and is pending (will be woken later).
+pub fn run_once() -> Option<Poll<()>> {
     if let Some(task) = READY_QUEUE.lock().pop_front() {
-        let _ = task.poll();
-        true
+        Some(task.poll())
     } else {
-        false
+        None
     }
 }
 
@@ -101,7 +105,7 @@ pub fn run_once() -> bool {
 pub fn run_for(max_steps: usize) -> bool {
     let mut ran = false;
     for _ in 0..max_steps {
-        if !run_once() {
+        if run_once().is_none() {
             break;
         }
         ran = true;
@@ -112,25 +116,19 @@ pub fn run_for(max_steps: usize) -> bool {
 /// Runs the executor loop until no ready tasks remain.
 ///
 /// This function drains all ready tasks. It uses an atomic counter to detect
-/// if new tasks arrive while draining; if so, it continues. It returns once
-/// the queue is empty and no new wakes have occurred.
+/// if new tasks arrive while draining; if so, it continues.
 pub fn run_until_idle() {
     loop {
-        // Snapshot the wake counter before draining.
         let seen = WAKE_COUNT.load(Ordering::Acquire);
 
         // Drain all currently ready tasks.
-        while run_once() {}
+        while run_once().is_some() {}
 
-        // If queue is empty, check whether any new wakes happened.
         if READY_QUEUE.lock().is_empty() {
-            // Re-check counter: if unchanged, no new tasks arrived, we're done.
             if WAKE_COUNT.load(Ordering::Acquire) == seen {
                 break;
             }
-            // Otherwise, new wake happened; continue to drain.
         }
-        // Yield CPU briefly to avoid tight spin.
         core::hint::spin_loop();
     }
 }
