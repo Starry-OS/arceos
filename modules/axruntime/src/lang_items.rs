@@ -3,7 +3,7 @@ use core::panic::PanicInfo;
 use lazyinit::LazyInit;
 pub trait PanicHelper: Send + Sync {
     /// Looks up the symbol name and its base address by the given address.
-    fn lookup_symbol<'a>(&self, addr: usize, buf: &'a mut [u8; 1024]) -> Option<(&'a str, usize)>;
+    fn lookup_symbol<'a>(&self, addr: usize, buf: &'a mut [u8; 4096]) -> Option<(&'a str, usize)>;
 }
 
 static PANIC_HELPER: LazyInit<&'static dyn PanicHelper> = LazyInit::new();
@@ -72,7 +72,7 @@ mod unwind {
             unwind_ctx: &UnwindContext<'_>,
             arg: *mut c_void,
         ) -> UnwindReasonCode {
-            let mut name_buf = [0u8; 1024];
+            let mut name_buf = [0u8; 4096];
             let data = unsafe { &mut *(arg as *mut CallbackData) };
             if data.kernel_main {
                 // If we are in kernel_main, we don't need to print the backtrace.

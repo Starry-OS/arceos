@@ -14,6 +14,7 @@ SECTIONS
         __executable_start = .;
         *(.text.boot)
         *(.text .text.*)
+        KEEP(*(.c.text .c.text.*))
         . = ALIGN(4K);
         _etext = .;
         ; for unwind
@@ -88,6 +89,7 @@ SECTIONS
         *(.data .data.*)
         *(.sdata .sdata.*)
         *(.got .got.*)
+        KEEP(*(.c.data .c.data.*))
 
         . = ALIGN(0x10);
         _ex_table_start = .;

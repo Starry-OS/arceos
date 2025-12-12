@@ -7,6 +7,7 @@ ifeq ($(APP_TYPE), c)
 else
   rust_package := $(shell cat $(APP)/Cargo.toml | sed -n 's/^name = "\([a-z0-9A-Z_\-]*\)"/\1/p')
   rust_elf := $(TARGET_DIR)/$(TARGET)/$(MODE)/$(rust_package)
+  rust_lib := $(TARGET_DIR)/$(TARGET)/$(MODE)/lib$(rust_package).rlib
 endif
 
 ifneq ($(filter $(MAKECMDGOALS),doc doc_check_missing),)
@@ -18,7 +19,7 @@ else ifneq ($(filter $(MAKECMDGOALS),unittest unittest_no_fail_fast),)
   # run `make unittest`
   $(if $(V), $(info RUSTFLAGS: "$(RUSTFLAGS)"))
   export RUSTFLAGS
-else ifneq ($(filter $(or $(MAKECMDGOALS), $(.DEFAULT_GOAL)), all build run justrun debug),)
+else ifneq ($(filter $(or $(MAKECMDGOALS), $(.DEFAULT_GOAL)), all build build_ko run justrun debug),)
   # run `make build` and other above goals
   ifneq ($(V),)
     $(info APP: "$(APP)")
@@ -32,19 +33,20 @@ else ifneq ($(filter $(or $(MAKECMDGOALS), $(.DEFAULT_GOAL)), all build run just
   ifeq ($(APP_TYPE), c)
     $(if $(V), $(info CFLAGS: "$(CFLAGS)") $(info LDFLAGS: "$(LDFLAGS)"))
   else ifeq ($(APP_TYPE), rust)
-    RUSTFLAGS += $(RUSTFLAGS_LINK_ARGS)
-    ifeq ($(BACKTRACE), y)
+	RUSTFLAGS += $(RUSTFLAGS_LINK_ARGS)
+	RUSTFLAGS += $(KMOD_RUSTFLAGS)
+	ifeq ($(BACKTRACE), y)
 #       RUSTFLAGS += -C force-frame-pointers -C debuginfo=2 -C strip=none
-        ifneq ($(ARCH), loongarch64)
-            RUSTFLAGS += \
-            -C force-unwind-tables=yes \
-            -C panic=unwind \
-            -C link-arg=--eh-frame-hdr
-        endif
-    endif
-    ifeq ($(MYPLAT), axplat-loongarch64-2k1000la)
-      RUSTFLAGS += -C target-feature=-ual
-    endif
+		ifneq ($(ARCH), loongarch64)
+			RUSTFLAGS += \
+			-C force-unwind-tables=yes \
+			-C panic=unwind \
+			-C link-arg=--eh-frame-hdr
+		endif
+	endif
+	ifeq ($(MYPLAT), axplat-loongarch64-2k1000la)
+		RUSTFLAGS += -C target-feature=-ual
+	endif
   endif
   $(if $(V), $(info RUSTFLAGS: "$(RUSTFLAGS)"))
   export RUSTFLAGS
@@ -57,6 +59,7 @@ endif
 _cargo_build: oldconfig
 	@printf "    $(GREEN_C)Building$(END_C) App: $(APP_NAME), Arch: $(ARCH), Platform: $(PLAT_NAME), App type: $(APP_TYPE)\n"
 ifeq ($(APP_TYPE), rust)
+	@echo "RUSTFLAGS for kernel: $(RUSTFLAGS)"
 	$(call cargo_build,$(APP),$(AX_FEAT) $(LIB_FEAT) $(APP_FEAT))
 	@cp $(rust_elf) $(OUT_ELF)
 else ifeq ($(APP_TYPE), c)
@@ -69,13 +72,12 @@ endif
 $(OUT_KSYM): _cargo_build
 	@if ! command -v gen_ksym >/dev/null 2>&1; then \
 		echo "Installing gen_ksym..."; \
-		RUSTFLAGS= cargo install --git https://github.com/Starry-OS/ksym --features=demangle; \
+		RUSTFLAGS= cargo install --git https://github.com/Starry-OS/ksym; \
 	else \
 		echo "gen_ksym already installed."; \
 	fi
 	@echo "Generating kernel symbols at $@"
-	nm -n -C $(OUT_ELF) | grep ' [Tt] ' | grep -v '\.L' | grep -v '$$x' | RUSTFLAGS= gen_ksym > $@
-
+	@nm -n $(OUT_ELF) | grep ' [TtDBR] ' | awk '$$3 !~ /^\.L/' | awk '$$3 != "$$x"' | RUSTFLAGS= gen_ksym > $@
 $(OUT_DIR):
 	$(call run_cmd,mkdir,-p $@)
 
@@ -85,6 +87,13 @@ $(OUT_BIN): _cargo_build $(OUT_ELF)
 		echo 'Empty kernel image "$(notdir $(FINAL_IMG))" is built, please check your build configuration'; \
 		exit 1; \
 	fi
+
+$(OUT_KO): oldconfig
+	@echo "Building kernel module at $@"
+	@echo "RUSTFLAGS for kernel module: $(RUSTFLAGS)"
+	$(call cargo_build,$(APP),$(AX_FEAT) $(LIB_FEAT) $(APP_FEAT))
+	@echo "Linking kernel module..."
+	$(call run_cmd,$(LD), -r -T $(KMOD_LINKER_SCRIPT) -o $@ --whole-archive $(rust_lib) --strip-debug --build-id=none --gc-sections -no-pie)
 
 ifeq ($(ARCH), aarch64)
   uimg_arch := arm64

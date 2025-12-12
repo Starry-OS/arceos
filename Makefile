@@ -11,6 +11,7 @@
 #     - `EXTRA_CONFIG`: Extra config specification file
 #     - `OUT_CONFIG`: Final config file that takes effect
 #     - `UIMAGE`: To generate U-Boot image
+#	  - `KMOD`: To build as a kernel module
 #     - `LD_SCRIPT`: Use a custom linker script file.
 # * App options:
 #     - `A` or `APP`: Path to the application
@@ -48,6 +49,7 @@ TARGET_DIR ?= $(PWD)/target
 EXTRA_CONFIG ?=
 OUT_CONFIG ?= $(PWD)/.axconfig.toml
 UIMAGE ?= n
+KMOD ?= n
 
 # App options
 A ?= examples/helloworld
@@ -94,7 +96,7 @@ endif
 
 .DEFAULT_GOAL := all
 
-ifneq ($(filter $(or $(MAKECMDGOALS), $(.DEFAULT_GOAL)), all build disasm run justrun debug defconfig oldconfig),)
+ifneq ($(filter $(or $(MAKECMDGOALS), $(.DEFAULT_GOAL)), all build build_ko disasm run justrun debug defconfig oldconfig),)
 # Install dependencies
 include scripts/make/deps.mk
 
@@ -154,9 +156,12 @@ APP_NAME := $(shell basename $(APP))
 OUT_ELF := $(OUT_DIR)/$(APP_NAME)_$(PLAT_NAME).elf
 OUT_BIN := $(patsubst %.elf,%.bin,$(OUT_ELF))
 OUT_UIMG := $(patsubst %.elf,%.uimg,$(OUT_ELF))
+OUT_KO := $(OUT_DIR)/$(APP_NAME).ko
 OUT_KSYM := $(OUT_DIR)/kallsyms
 ifeq ($(UIMAGE), y)
   FINAL_IMG := $(OUT_UIMG)
+else ifeq ($(KMOD), y)
+  FINAL_IMG := $(OUT_KO)
 else
   FINAL_IMG := $(OUT_BIN)
 endif
@@ -179,6 +184,8 @@ oldconfig:
 	$(call oldconfig)
 
 build: $(OUT_DIR) $(FINAL_IMG) $(OUT_KSYM)
+
+build_ko: $(OUT_DIR) $(FINAL_IMG)
 
 disasm:
 	$(OBJDUMP) $(OUT_ELF) | less
@@ -229,6 +236,6 @@ clean_c::
 	rm -rf $(app-objs)
 
 .PHONY: all defconfig oldconfig \
-	build disasm run justrun debug \
+	build build_ko disasm run justrun debug \
 	clippy doc doc_check_missing fmt fmt_c unittest unittest_no_fail_fast \
 	disk_img clean clean_c

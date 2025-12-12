@@ -38,6 +38,11 @@ impl AddrSpace {
         &self.areas
     }
 
+    /// Returns a mutable reference to the memory set of the address space.
+    pub fn memoryset_mut(&mut self) -> &mut MemorySet<Backend> {
+        &mut self.areas
+    }
+
     /// Returns the address space size.
     pub fn size(&self) -> usize {
         self.va_range.size()

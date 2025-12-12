@@ -12,7 +12,6 @@ build_args-release := --release
 
 build_args := \
   -Zunstable-options \
-  -Zbuild-std=core,alloc,compiler_builtins \
   -Zbuild-std-features=compiler-builtins-mem \
   --target $(TARGET) \
   --target-dir $(TARGET_DIR) \
@@ -24,7 +23,8 @@ RUSTFLAGS_LINK_ARGS := \
   -C link-arg=-T$(LD_SCRIPT) \
   -C link-arg=-no-pie \
   -C link-arg=-znostart-stop-gc \
-  -C no-redzone=y
+  -C no-redzone=y \
+  -C link-dead-code
 
 RUSTDOCFLAGS := -Z unstable-options --enable-index-page -D rustdoc::broken_intra_doc_links
 
