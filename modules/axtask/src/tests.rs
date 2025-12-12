@@ -227,3 +227,26 @@ fn test_async_executor_run_for_progress() {
     assert_eq!(CNT.load(Ordering::Acquire), 2);
 }
 
+#[test]
+fn test_async_executor_percpu_correctness() {
+    let _lock = SERIAL.lock();
+    init_env();
+
+    // This test verifies that the per-cpu executor works correctly on the current CPU.
+    // Since we are in a unit test environment, we effectively test the "primary" CPU behavior.
+    // It ensures that the per-cpu READY_QUEUE is initialized and accessible.
+    
+    static COUNTER: AtomicUsize = AtomicUsize::new(0);
+    const ITERATIONS: usize = 100;
+
+    for _ in 0..ITERATIONS {
+        executor::spawn(async {
+            COUNTER.fetch_add(1, Ordering::Relaxed);
+        });
+    }
+
+    executor::run_until_idle();
+
+    assert_eq!(COUNTER.load(Ordering::Relaxed), ITERATIONS);
+}
+

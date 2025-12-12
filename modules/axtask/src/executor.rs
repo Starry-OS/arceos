@@ -15,18 +15,22 @@ use crate::TaskId;
 ///
 /// This queue stores `AsyncTask`s that are ready to be polled.
 /// The executor loop will pop tasks from this queue and run them.
+
+#[percpu::def_percpu]
 static READY_QUEUE: LazyInit<SpinNoIrq<VecDeque<Arc<AsyncTask>>>> = LazyInit::new();
+
 static READY_QUEUE_INITED: AtomicBool = AtomicBool::new(false);
-/// Wake counter: incremented on spawn/wake, used by runners to detect new tasks.
+
+#[percpu::def_percpu]
 static WAKE_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 /// Initialize the executor module.
 pub(crate) fn init() {
-    if READY_QUEUE_INITED.swap(true, Ordering::AcqRel) {
-        return;
-    }
-    READY_QUEUE.init_once(SpinNoIrq::new(VecDeque::new()));
+    READY_QUEUE.with_current(|q| {
+        q.init_once(SpinNoIrq::new(VecDeque::new()));
+    });
 }
+
 
 /// An asynchronous task that wraps a future.
 pub struct AsyncTask {
@@ -70,8 +74,8 @@ impl Wake for AsyncTask {
     }
 
     fn wake_by_ref(self: &Arc<Self>) {
-        READY_QUEUE.lock().push_back(self.clone());
-        WAKE_COUNT.fetch_add(1, Ordering::Release);
+        READY_QUEUE.with_current(|q| q.lock().push_back(self.clone()));
+        WAKE_COUNT.with_current(|c| c.fetch_add(1, Ordering::Release));
     }
 }
 
@@ -83,8 +87,8 @@ where
     F: Future<Output = ()> + Send + 'static,
 {
     let task = AsyncTask::new(future);
-    READY_QUEUE.lock().push_back(task);
-    WAKE_COUNT.fetch_add(1, Ordering::Release);
+    READY_QUEUE.with_current(|q| q.lock().push_back(task));
+    WAKE_COUNT.with_current(|c| c.fetch_add(1, Ordering::Release));
 }
 
 /// Polls one ready task if present.
@@ -99,7 +103,7 @@ where
 /// - `Some(Poll::Ready(()))`: A task ran and finished.
 /// - `Some(Poll::Pending)`: A task ran and is pending (will be woken later).
 pub fn run_once() -> Option<Poll<()>> {
-    if let Some(task) = READY_QUEUE.lock().pop_front() {
+    if let Some(task) = READY_QUEUE.with_current(|q| q.lock().pop_front()) {
         Some(task.poll())
     } else {
         None
@@ -124,15 +128,15 @@ pub fn run_for(max_steps: usize) -> bool {
 /// if new tasks arrive while draining; if so, it continues.
 pub fn run_until_idle() {
     loop {
-        let seen = WAKE_COUNT.load(Ordering::Acquire);
+        let seen = WAKE_COUNT.with_current(|c| c.load(Ordering::Acquire));
 
         while run_once().is_some() {}
 
         let done = {
             let _guard = kernel_guard::NoPreempt::new();
 
-            if READY_QUEUE.lock().is_empty() {
-                if WAKE_COUNT.load(Ordering::Acquire) == seen {
+            if READY_QUEUE.with_current(|q| q.lock().is_empty()) {
+                if WAKE_COUNT.with_current(|c| c.load(Ordering::Acquire)) == seen {
                     true
                 } else {
                     false
