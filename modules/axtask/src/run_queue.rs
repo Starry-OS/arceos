@@ -440,6 +440,22 @@ impl AxRunQueue {
 
         let mut scheduler = Scheduler::new();
         scheduler.add_task(gc_task);
+
+        #[cfg(feature = "watchdog")]
+        {
+            let watchdog_task = TaskInner::new(
+                move || loop {
+                    axwatchdog::touch_softlockup(cpu_id, axhal::time::monotonic_time_nanos());
+                    crate::yield_now();
+                },
+                "watchdog".into(),
+                axconfig::TASK_STACK_SIZE,
+            )
+            .into_arc();
+            watchdog_task.set_cpumask(AxCpuMask::one_shot(cpu_id));
+            scheduler.add_task(watchdog_task);
+        }
+
         Self {
             cpu_id,
             scheduler: SpinRaw::new(scheduler),
