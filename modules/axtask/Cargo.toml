@@ -38,12 +38,15 @@ sched-cfs = ["multitask", "preempt"]
 
 test = ["percpu?/sp-naive"]
 
+watchdog = ["dep:axwatchdog"]
+
 [dependencies]
 axconfig = { workspace = true, optional = true }
 axerrno.workspace = true
 axhal.workspace = true
 axpoll = { workspace = true, optional = true }
 axsched = { version = "0.3", optional = true }
+axwatchdog = { workspace = true, optional = true }
 cfg-if.workspace = true
 cpumask = { version = "0.1", optional = true }
 crate_interface = { workspace = true, optional = true }

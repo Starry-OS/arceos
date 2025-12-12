@@ -227,6 +227,19 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
     info!("Primary CPU {cpu_id} init OK.");
     INITED_CPUS.fetch_add(1, Ordering::Release);
 
+    #[cfg(feature = "watchdog")]
+    {
+        axtask::register_timer_callback(|_| {
+            let now_ns = axhal::time::monotonic_time_nanos();
+            let cpu_id = axhal::percpu::this_cpu_id();
+            axwatchdog::timer_tick(cpu_id);
+            if axwatchdog::check_softlockup(cpu_id, now_ns) != axwatchdog::CpuHealth::Healthy {
+                axtask::show_global_task_queue(cpu_id);
+                panic!("Softlockup detected on CPU {}", cpu_id);
+            }
+        });
+    }
+
     while !is_init_ok() {
         core::hint::spin_loop();
     }

@@ -92,6 +92,7 @@ axplat-loongarch64-qemu-virt = { git = "https://github.com/arceos-org/axplat_cra
 axplat-riscv64-qemu-virt = { git = "https://github.com/arceos-org/axplat_crates.git", tag = "dev-v03" }
 axplat-x86-pc = { git = "https://github.com/arceos-org/axplat_crates.git", tag = "dev-v03" }
 axpoll = "0.1"
+axwatchdog = { git = "https://github.com/kylin-x-kernel/axwatchdog.git", branch = "lzx/dev"}
 bindgen = "0.72"
 cfg-if = "1.0"
 chrono = { version = "0.4", default-features = false }

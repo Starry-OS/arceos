@@ -61,6 +61,19 @@ pub fn rust_main_secondary(cpu_id: usize) -> ! {
     #[cfg(feature = "irq")]
     axhal::asm::enable_irqs();
 
+    #[cfg(feature = "watchdog")]
+    {
+        axtask::register_timer_callback(|_| {
+            let now_ns = axhal::time::monotonic_time_nanos();
+            let cpu_id = axhal::percpu::this_cpu_id();
+            axwatchdog::timer_tick(cpu_id);
+            if axwatchdog::check_softlockup(cpu_id, now_ns) != axwatchdog::CpuHealth::Healthy {
+                axtask::show_global_task_queue(cpu_id);
+                panic!("Softlockup detected on CPU {}", cpu_id);
+            }
+        });
+    }
+
     #[cfg(all(feature = "tls", not(feature = "multitask")))]
     super::init_tls();
 
