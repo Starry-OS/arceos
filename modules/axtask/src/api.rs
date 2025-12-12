@@ -240,6 +240,16 @@ pub fn exit(exit_code: i32) -> ! {
     current_run_queue::<NoPreemptIrqSave>().exit_current(exit_code)
 }
 
+/// Print all tasks in the global task queue of the specified CPU.
+#[cfg(feature = "watchdog")]
+pub fn show_global_task_queue(cpu_id: usize){
+    for weaktask in crate::run_queue::get_global_task_queue(cpu_id).lock().iter() {
+        if let Some(task) = weaktask.upgrade() {
+            warn!("cpu_id: {}, {:?}",cpu_id,task.inner());
+        }
+    }
+}
+
 /// The idle task routine.
 ///
 /// It runs an infinite loop that keeps calling [`yield_now()`].

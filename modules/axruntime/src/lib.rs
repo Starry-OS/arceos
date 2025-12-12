@@ -234,7 +234,7 @@ pub fn rust_main(cpu_id: usize, arg: usize) -> ! {
             let cpu_id = axhal::percpu::this_cpu_id();
             axwatchdog::timer_tick(cpu_id);
             if axwatchdog::check_softlockup(cpu_id, now_ns) != axwatchdog::CpuHealth::Healthy {
-                //axtask::show_global_task_queue(cpu_id);
+                axtask::show_global_task_queue(cpu_id);
                 panic!("Softlockup detected on CPU {}", cpu_id);
             }
         });
