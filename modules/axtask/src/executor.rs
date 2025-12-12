@@ -89,6 +89,11 @@ where
 
 /// Polls one ready task if present.
 ///
+/// This function dequeues a single task from the global ready queue and polls it once.
+/// - If the task completes (`Poll::Ready`), it is dropped.
+/// - If the task is still pending (`Poll::Pending`), it is NOT automatically re-queued by this function.
+///   It will be re-queued only when its `Waker` is triggered.
+///
 /// Returns:
 /// - `None`: The ready queue is empty.
 /// - `Some(Poll::Ready(()))`: A task ran and finished.
@@ -121,14 +126,26 @@ pub fn run_until_idle() {
     loop {
         let seen = WAKE_COUNT.load(Ordering::Acquire);
 
-        // Drain all currently ready tasks.
         while run_once().is_some() {}
 
-        if READY_QUEUE.lock().is_empty() {
-            if WAKE_COUNT.load(Ordering::Acquire) == seen {
-                break;
+        let done = {
+            let _guard = kernel_guard::NoPreempt::new();
+
+            if READY_QUEUE.lock().is_empty() {
+                if WAKE_COUNT.load(Ordering::Acquire) == seen {
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
             }
+        };
+
+        if done {
+            break;
         }
+        
         core::hint::spin_loop();
     }
 }
