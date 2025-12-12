@@ -51,12 +51,12 @@ percpu_static! {
 /// Stores all tasks for each CPU except those in the 'exited' state.
 #[cfg(feature = "watchdog")]
 static mut GLOBAL_TASK_QUEUES: [SpinNoIrq<Vec<WeakAxTaskRef>>; axconfig::plat::CPU_NUM] =
-    [ const { SpinNoIrq::new(Vec::new()) }; axconfig::plat::CPU_NUM];
+    [const { SpinNoIrq::new(Vec::new()) }; axconfig::plat::CPU_NUM];
 
 /// Returns a mutable reference to the global task queue of the given CPU.
 #[cfg(feature = "watchdog")]
 #[inline]
-pub(crate) fn get_global_task_queue(cpu_id: usize) -> &'static SpinNoIrq<Vec<WeakAxTaskRef>>{
+pub(crate) fn get_global_task_queue(cpu_id: usize) -> &'static SpinNoIrq<Vec<WeakAxTaskRef>> {
     unsafe { &GLOBAL_TASK_QUEUES[cpu_id] }
 }
 
@@ -259,7 +259,9 @@ impl<G: BaseGuard> AxRunQueueRef<'_, G> {
         );
         assert!(task.is_ready());
         #[cfg(feature = "watchdog")]
-        get_global_task_queue(self.inner.cpu_id).lock().push(Arc::downgrade(&task));
+        get_global_task_queue(self.inner.cpu_id)
+            .lock()
+            .push(Arc::downgrade(&task));
         self.inner.scheduler.lock().add_task(task);
     }
 
@@ -381,9 +383,9 @@ impl<G: BaseGuard> CurrentRunQueueRef<'_, G> {
         assert!(curr.is_running(), "task is not running: {:?}", curr.state());
         assert!(!curr.is_idle());
         #[cfg(feature = "watchdog")]
-        get_global_task_queue(self.inner.cpu_id).lock().retain(|weak_task| {
-            weak_task.upgrade().map_or(true, |t| t.id() != curr.id())
-        });
+        get_global_task_queue(self.inner.cpu_id)
+            .lock()
+            .retain(|weak_task| weak_task.upgrade().map_or(true, |t| t.id() != curr.id()));
         if curr.is_init() {
             // Safety: it is called from `current_run_queue::<NoPreemptIrqSave>().exit_current(exit_code)`,
             // which disabled IRQs and preemption.
@@ -460,7 +462,9 @@ impl AxRunQueue {
         gc_task.set_cpumask(AxCpuMask::one_shot(cpu_id));
 
         #[cfg(feature = "watchdog")]
-        get_global_task_queue(cpu_id).lock().push(Arc::downgrade(&gc_task));
+        get_global_task_queue(cpu_id)
+            .lock()
+            .push(Arc::downgrade(&gc_task));
 
         let mut scheduler = Scheduler::new();
         scheduler.add_task(gc_task);
@@ -477,7 +481,9 @@ impl AxRunQueue {
             )
             .into_arc();
             watchdog_task.set_cpumask(AxCpuMask::one_shot(cpu_id));
-            get_global_task_queue(cpu_id).lock().push(Arc::downgrade(&watchdog_task));
+            get_global_task_queue(cpu_id)
+                .lock()
+                .push(Arc::downgrade(&watchdog_task));
             scheduler.add_task(watchdog_task);
         }
 
