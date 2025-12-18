@@ -62,6 +62,7 @@ fs = [
     "axruntime/fs",
 ] # TODO: try to remove "paging"
 fs-ext4 = ["fs", "axfs/ext4"]
+fs-rsext4 = ["fs","axfs/rsext4"]
 fs-fat = ["fs", "axfs/fat"]
 fs-times = ["fs", "axfs/times"]
 
