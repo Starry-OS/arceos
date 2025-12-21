@@ -2,64 +2,106 @@ use alloc::{boxed::Box, collections::VecDeque, sync::Arc, task::Wake};
 use core::{
     future::Future,
     pin::Pin,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+    sync::atomic::{AtomicUsize, Ordering},
     task::{Context, Poll, Waker},
 };
 
+use kernel_guard::NoPreemptIrqSave;
 use kspin::SpinNoIrq;
 use lazyinit::LazyInit;
 
-use crate::TaskId;
+use crate::{select_run_queue, TaskId, WeakAxTaskRef};
 
-/// Global ready queue for async tasks.
-///
-/// This queue stores `AsyncTask`s that are ready to be polled.
-/// The executor loop will pop tasks from this queue and run them.
+pub struct AxExecutor {
+    queue: SpinNoIrq<VecDeque<Arc<AsyncTask>>>,
+}
+
+impl AxExecutor {
+    pub fn new() -> Self {
+        Self {
+            queue: SpinNoIrq::new(VecDeque::new()),
+        }
+    }
+
+    pub fn add_task(&self, task: Arc<AsyncTask>) {
+        self.queue.lock().push_back(task);
+    }
+
+    pub fn pop_task(&self) -> Option<Arc<AsyncTask>> {
+        self.queue.lock().pop_front()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.queue.lock().is_empty()
+    }
+}
+
+impl Default for AxExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[percpu::def_percpu]
-static READY_QUEUE: LazyInit<SpinNoIrq<VecDeque<Arc<AsyncTask>>>> = LazyInit::new();
-
-static READY_QUEUE_INITED: AtomicBool = AtomicBool::new(false);
+static READY_QUEUE: LazyInit<Arc<AxExecutor>> = LazyInit::new();
 
 #[percpu::def_percpu]
 static WAKE_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-/// Initialize the executor module.
+#[percpu::def_percpu]
+static BLOCKED_TASK: SpinNoIrq<Option<WeakAxTaskRef>> = SpinNoIrq::new(None);
+
 pub(crate) fn init() {
     READY_QUEUE.with_current(|q| {
-        q.init_once(SpinNoIrq::new(VecDeque::new()));
+        q.init_once(Arc::new(AxExecutor::new()));
     });
 }
 
+pub fn set_blocked_task(task: WeakAxTaskRef) {
+    BLOCKED_TASK.with_current(|t| {
+        *t.lock() = Some(task);
+    });
+}
+
+pub fn clear_blocked_task() {
+    BLOCKED_TASK.with_current(|t| {
+        *t.lock() = None;
+    });
+}
+
+fn wake_blocked_task() {
+    BLOCKED_TASK.with_current(|t| {
+        if let Some(weak) = t.lock().as_ref() {
+            if let Some(task) = weak.upgrade() {
+                select_run_queue::<NoPreemptIrqSave>(&task).unblock_task(task, false);
+            }
+        }
+    });
+}
 
 /// An asynchronous task that wraps a future.
 pub struct AsyncTask {
     id: TaskId,
-    /// The future to be executed.
-    ///
-    /// It is wrapped in `SpinNoIrq` to provide interior mutability, which is required
-    /// because `poll` takes `&self` (via `Arc<Self>`) but the future's `poll` method
-    /// requires `Pin<&mut F>`.
     future: SpinNoIrq<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
+    executor: Arc<AxExecutor>,
 }
 
 impl AsyncTask {
-    /// Creates a new `AsyncTask` with the given future.
-    pub fn new(future: impl Future<Output = ()> + Send + 'static) -> Arc<Self> {
+    pub fn new(
+        future: impl Future<Output = ()> + Send + 'static,
+        executor: Arc<AxExecutor>,
+    ) -> Arc<Self> {
         Arc::new(Self {
             id: TaskId::new(),
             future: SpinNoIrq::new(Box::pin(future)),
+            executor,
         })
     }
 
-    /// Returns the unique identifier of the task.
     pub fn id(&self) -> TaskId {
         self.id
     }
 
-    /// Polls the inner future.
-    ///
-    /// This creates a `Waker` from the `Arc<AsyncTask>` and passes it to the future's context.
     pub(crate) fn poll(self: &Arc<Self>) -> Poll<()> {
         let waker = Waker::from(self.clone());
         let mut cx = Context::from_waker(&waker);
@@ -74,43 +116,30 @@ impl Wake for AsyncTask {
     }
 
     fn wake_by_ref(self: &Arc<Self>) {
-        READY_QUEUE.with_current(|q| q.lock().push_back(self.clone()));
+        self.executor.add_task(self.clone());
         WAKE_COUNT.with_current(|c| c.fetch_add(1, Ordering::Release));
+        wake_blocked_task();
     }
 }
 
-/// Spawns a future as an asynchronous task.
-///
-/// The task is immediately added to the ready queue.
 pub fn spawn<F>(future: F)
 where
     F: Future<Output = ()> + Send + 'static,
 {
-    let task = AsyncTask::new(future);
-    READY_QUEUE.with_current(|q| q.lock().push_back(task));
+    let executor = READY_QUEUE.with_current(|q| q.clone());
+    let task = AsyncTask::new(future, executor.clone());
+    executor.add_task(task);
     WAKE_COUNT.with_current(|c| c.fetch_add(1, Ordering::Release));
 }
 
-/// Polls one ready task if present.
-///
-/// This function dequeues a single task from the global ready queue and polls it once.
-/// - If the task completes (`Poll::Ready`), it is dropped.
-/// - If the task is still pending (`Poll::Pending`), it is NOT automatically re-queued by this function.
-///   It will be re-queued only when its `Waker` is triggered.
-///
-/// Returns:
-/// - `None`: The ready queue is empty.
-/// - `Some(Poll::Ready(()))`: A task ran and finished.
-/// - `Some(Poll::Pending)`: A task ran and is pending (will be woken later).
 pub fn run_once() -> Option<Poll<()>> {
-    if let Some(task) = READY_QUEUE.with_current(|q| q.lock().pop_front()) {
+    if let Some(task) = READY_QUEUE.with_current(|q| q.pop_task()) {
         Some(task.poll())
     } else {
         None
     }
 }
 
-/// Run up to `max_steps` tasks; returns true if any task ran.
 pub fn run_for(max_steps: usize) -> bool {
     let mut ran = false;
     for _ in 0..max_steps {
@@ -122,34 +151,29 @@ pub fn run_for(max_steps: usize) -> bool {
     ran
 }
 
-/// Runs the executor loop until no ready tasks remain.
-///
-/// This function drains all ready tasks. It uses an atomic counter to detect
-/// if new tasks arrive while draining; if so, it continues.
+pub fn wake_count() -> usize {
+    WAKE_COUNT.with_current(|c| c.load(Ordering::Acquire))
+}
+
+pub fn is_empty() -> bool {
+    READY_QUEUE.with_current(|q| q.is_empty())
+}
+
 pub fn run_until_idle() {
     loop {
-        let seen = WAKE_COUNT.with_current(|c| c.load(Ordering::Acquire));
+        let seen = wake_count();
 
         while run_once().is_some() {}
 
         let done = {
             let _guard = kernel_guard::NoPreempt::new();
-
-            if READY_QUEUE.with_current(|q| q.lock().is_empty()) {
-                if WAKE_COUNT.with_current(|c| c.load(Ordering::Acquire)) == seen {
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
+            is_empty() && wake_count() == seen
         };
 
         if done {
             break;
         }
-        
+
         core::hint::spin_loop();
     }
 }

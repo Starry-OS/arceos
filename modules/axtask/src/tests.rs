@@ -235,7 +235,7 @@ fn test_async_executor_percpu_correctness() {
     // This test verifies that the per-cpu executor works correctly on the current CPU.
     // Since we are in a unit test environment, we effectively test the "primary" CPU behavior.
     // It ensures that the per-cpu READY_QUEUE is initialized and accessible.
-    
+
     static COUNTER: AtomicUsize = AtomicUsize::new(0);
     const ITERATIONS: usize = 100;
 
