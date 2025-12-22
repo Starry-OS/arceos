@@ -2,7 +2,7 @@ use alloc::{boxed::Box, collections::VecDeque, sync::Arc, task::Wake};
 use core::{
     future::Future,
     pin::Pin,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
     task::{Context, Poll, Waker},
 };
 
@@ -10,7 +10,7 @@ use kernel_guard::NoPreemptIrqSave;
 use kspin::SpinNoIrq;
 use lazyinit::LazyInit;
 
-use crate::{select_run_queue, TaskId, WeakAxTaskRef};
+use crate::{current_run_queue, select_run_queue, TaskId, WeakAxTaskRef};
 
 pub struct AxExecutor {
     queue: SpinNoIrq<VecDeque<Arc<AsyncTask>>>,
@@ -84,6 +84,7 @@ pub struct AsyncTask {
     id: TaskId,
     future: SpinNoIrq<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
     executor: Arc<AxExecutor>,
+    enqueued: AtomicBool,
 }
 
 impl AsyncTask {
@@ -95,6 +96,7 @@ impl AsyncTask {
             id: TaskId::new(),
             future: SpinNoIrq::new(Box::pin(future)),
             executor,
+            enqueued: AtomicBool::new(false),
         })
     }
 
@@ -103,10 +105,24 @@ impl AsyncTask {
     }
 
     pub(crate) fn poll(self: &Arc<Self>) -> Poll<()> {
+        self.enqueued.store(false, Ordering::Release);
         let waker = Waker::from(self.clone());
         let mut cx = Context::from_waker(&waker);
         let mut future = self.future.lock();
         future.as_mut().poll(&mut cx)
+    }
+
+    fn enqueue(self: &Arc<Self>) -> bool {
+        if self
+            .enqueued
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+        {
+            self.executor.add_task(self.clone());
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -116,9 +132,10 @@ impl Wake for AsyncTask {
     }
 
     fn wake_by_ref(self: &Arc<Self>) {
-        self.executor.add_task(self.clone());
-        WAKE_COUNT.with_current(|c| c.fetch_add(1, Ordering::Release));
-        wake_blocked_task();
+        if self.enqueue() {
+            WAKE_COUNT.with_current(|c| c.fetch_add(1, Ordering::Release));
+            wake_blocked_task();
+        }
     }
 }
 
@@ -128,8 +145,9 @@ where
 {
     let executor = READY_QUEUE.with_current(|q| q.clone());
     let task = AsyncTask::new(future, executor.clone());
-    executor.add_task(task);
-    WAKE_COUNT.with_current(|c| c.fetch_add(1, Ordering::Release));
+    if task.enqueue() {
+        WAKE_COUNT.with_current(|c| c.fetch_add(1, Ordering::Release));
+    }
 }
 
 pub fn run_once() -> Option<Poll<()>> {
@@ -160,6 +178,8 @@ pub fn is_empty() -> bool {
 }
 
 pub fn run_until_idle() {
+    const SPIN_LIMIT: usize = 64;
+    let mut spin_count = 0;
     loop {
         let seen = wake_count();
 
@@ -174,6 +194,12 @@ pub fn run_until_idle() {
             break;
         }
 
-        core::hint::spin_loop();
+        if spin_count < SPIN_LIMIT {
+            spin_count += 1;
+            core::hint::spin_loop();
+        } else {
+            spin_count = 0;
+            current_run_queue::<NoPreemptIrqSave>().yield_current();
+        }
     }
 }
