@@ -104,9 +104,6 @@ pub fn run_on_bitmask_except_self<T: Into<MulticastCallback>>(
                 );
         }
     }
-    if done_flags.is_empty() {
-        return;
-    }
     for cpu_id in 0..cpu_num {
         if cpu_id != current_cpu_id && cpu_mask.get(cpu_id) {
             axhal::irq::send_ipi(IPI_IRQ, IpiTarget::Other { cpu_id });
