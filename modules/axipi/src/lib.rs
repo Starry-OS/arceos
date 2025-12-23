@@ -151,9 +151,6 @@ pub fn run_on_each_cpu_except_self<T: Into<MulticastCallback>>(
                 );
         }
     }
-    if done_flags.is_empty() {
-        return;
-    }
     // Send IPI to all other CPUs to trigger their callbacks
     axhal::irq::send_ipi(
         IPI_IRQ,
