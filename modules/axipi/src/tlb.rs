@@ -4,7 +4,7 @@ use page_table_multiarch::TlbFlushIf;
 
 use crate::{
     MulticastCallback, run_on_bitmask_except_self, run_on_each_cpu_except_self,
-    secondary_cpus_ready, this_cpu_id,
+    secondary_cpus_ready,
 };
 
 struct TlbFlushImpl;
