@@ -81,7 +81,7 @@ pub fn run_on_bitmask_except_self<T: Into<MulticastCallback>>(
     let cpu_num = axconfig::plat::CPU_NUM;
     let callback = callback.into();
 
-    let mut done_flags: Vec<Arc<AtomicBool>> = Vec::new(cpu_num - 1);
+    let mut done_flags: Vec<Arc<AtomicBool>> = Vec::with_capacity(cpu_num - 1);
 
     for cpu_id in 0..cpu_num {
         if cpu_id != current_cpu_id && cpu_mask.get(cpu_id) {
@@ -127,7 +127,7 @@ pub fn run_on_each_cpu_except_self<T: Into<MulticastCallback>>(
     let cpu_num = axconfig::plat::CPU_NUM;
     let callback = callback.into();
 
-    let mut done_flags: Vec<Arc<AtomicBool>> = Vec::new(cpu_num - 1);
+    let mut done_flags: Vec<Arc<AtomicBool>> = Vec::with_capacity(cpu_num - 1);
 
     // Push the callback to all other CPUs' IPI event queues
     for cpu_id in 0..cpu_num {
@@ -178,7 +178,7 @@ pub fn run_on_each_cpu<T: Into<MulticastCallback>>(name: &'static str, callback:
     // Execute callback on current CPU immediately
     callback.clone().call();
 
-    let mut done_flags: Vec<Arc<AtomicBool>> = Vec::new(cpu_num);
+    let mut done_flags: Vec<Arc<AtomicBool>> = Vec::with_capacity(cpu_num);
     // Push the callback to all other CPUs' IPI event queues
     for cpu_id in 0..cpu_num {
         if cpu_id != current_cpu_id {
