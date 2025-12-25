@@ -688,7 +688,6 @@ impl FileBackend {
             Self::Direct(loc) => dst.read_from(&mut axio::read_fn(|buf| {
                 loc.entry().as_file()?.read_at(buf, offset).inspect(|read| {
                     offset += *read as u64;
-                    info!("Read {} bytes at offset {}", *read, offset);
                 })
             })),
         }
