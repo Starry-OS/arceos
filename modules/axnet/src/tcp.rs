@@ -6,7 +6,7 @@ use core::{
 };
 
 use axerrno::{AxError, AxResult, ax_bail, ax_err_type};
-use axio::{IoBuf, Read, Write};
+use axio::prelude::*;
 use axpoll::{IoEvents, PollSet, Pollable};
 use axsync::Mutex;
 use smoltcp::{
@@ -367,7 +367,7 @@ impl SocketOps for TcpSocket {
         })
     }
 
-    fn recv(&self, mut dst: impl Write + IoBuf, options: RecvOptions<'_>) -> AxResult<usize> {
+    fn recv(&self, mut dst: impl Write + IoBufMut, options: RecvOptions<'_>) -> AxResult<usize> {
         if self.rx_closed.load(Ordering::Acquire) {
             return Err(AxError::NotConnected);
         }
@@ -383,7 +383,7 @@ impl SocketOps for TcpSocket {
                 } else if options.flags.contains(RecvFlags::PEEK) {
                     dst.write(
                         socket
-                            .peek(dst.remaining())
+                            .peek(dst.remaining_mut())
                             .map_err(|_| ax_err_type!(NotConnected, "not connected?"))?,
                     )
                 } else {
