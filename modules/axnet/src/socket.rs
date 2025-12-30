@@ -9,7 +9,7 @@ use core::{
 #[cfg(feature = "vsock")]
 use axdriver::prelude::VsockAddr;
 use axerrno::{AxError, AxResult, LinuxError};
-use axio::{Buf, BufMut};
+use axio::prelude::*;
 use axpoll::{IoEvents, Pollable};
 use bitflags::bitflags;
 use enum_dispatch::enum_dispatch;
@@ -149,9 +149,9 @@ pub trait SocketOps: Configurable {
     }
 
     /// Send data to the socket, optionally to a specific address.
-    fn send(&self, src: &mut impl Buf, options: SendOptions) -> AxResult<usize>;
+    fn send(&self, src: impl Read + IoBuf, options: SendOptions) -> AxResult<usize>;
     /// Receive data from the socket.
-    fn recv(&self, dst: &mut impl BufMut, options: RecvOptions<'_>) -> AxResult<usize>;
+    fn recv(&self, dst: impl Write + IoBufMut, options: RecvOptions<'_>) -> AxResult<usize>;
 
     /// Get the local endpoint of the socket.
     fn local_addr(&self) -> AxResult<SocketAddrEx>;

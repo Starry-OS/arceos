@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use axerrno::{AxError, AxResult};
 use axfs::{FS_CONTEXT, OpenOptions};
 use axfs_ng_vfs::NodeType;
-use axio::{Buf, BufMut};
+use axio::{IoBuf, Read, Write};
 use axpoll::{IoEvents, Pollable};
 use axsync::Mutex;
 use axtask::future::{block_on, interruptible};
@@ -39,8 +39,8 @@ pub trait TransportOps: Configurable + Pollable + Send + Sync {
 
     async fn accept(&self) -> AxResult<(Transport, UnixSocketAddr)>;
 
-    fn send(&self, src: &mut impl Buf, options: SendOptions) -> AxResult<usize>;
-    fn recv(&self, dst: &mut impl BufMut, options: RecvOptions<'_>) -> AxResult<usize>;
+    fn send(&self, src: impl Read + IoBuf, options: SendOptions) -> AxResult<usize>;
+    fn recv(&self, dst: impl Write, options: RecvOptions<'_>) -> AxResult<usize>;
 
     fn shutdown(&self, _how: Shutdown) -> AxResult {
         Ok(())
@@ -197,11 +197,11 @@ impl SocketOps for UnixSocket {
         }))
     }
 
-    fn send(&self, src: &mut impl Buf, options: SendOptions) -> AxResult<usize> {
+    fn send(&self, src: impl Read + IoBuf, options: SendOptions) -> AxResult<usize> {
         self.transport.send(src, options)
     }
 
-    fn recv(&self, dst: &mut impl BufMut, options: RecvOptions<'_>) -> AxResult<usize> {
+    fn recv(&self, dst: impl Write, options: RecvOptions<'_>) -> AxResult<usize> {
         self.transport.recv(dst, options)
     }
 

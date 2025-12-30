@@ -6,7 +6,7 @@ use core::{
 
 use async_trait::async_trait;
 use axerrno::{AxError, AxResult};
-use axio::{Buf, BufMut};
+use axio::{IoBuf, Read, Write};
 use axpoll::{IoEvents, PollSet, Pollable};
 use axsync::Mutex;
 use ringbuf::{
@@ -213,7 +213,7 @@ impl TransportOps for StreamTransport {
         ))
     }
 
-    fn send(&self, src: &mut impl Buf, options: SendOptions) -> AxResult<usize> {
+    fn send(&self, mut src: impl Read + IoBuf, options: SendOptions) -> AxResult<usize> {
         if options.to.is_some() {
             return Err(AxError::InvalidInput);
         }
@@ -251,7 +251,7 @@ impl TransportOps for StreamTransport {
         })
     }
 
-    fn recv(&self, dst: &mut impl BufMut, _options: RecvOptions) -> AxResult<usize> {
+    fn recv(&self, mut dst: impl Write, _options: RecvOptions) -> AxResult<usize> {
         self.general.recv_poller(self, || {
             let mut guard = self.channel.lock();
             let Some(chan) = guard.as_mut() else {
@@ -285,10 +285,12 @@ impl TransportOps for StreamTransport {
             self.tx_closed.store(true, Ordering::Release);
             self.poll_state.wake();
         }
-        if self.rx_closed.load(Ordering::Acquire) && self.tx_closed.load(Ordering::Acquire)
-            && let Some(chan) = self.channel.lock().take() {
-                chan.poll_update.wake();
-            }
+        if self.rx_closed.load(Ordering::Acquire)
+            && self.tx_closed.load(Ordering::Acquire)
+            && let Some(chan) = self.channel.lock().take()
+        {
+            chan.poll_update.wake();
+        }
         Ok(())
     }
 }
@@ -318,9 +320,10 @@ impl Pollable for StreamTransport {
                 chan.poll_update.register(context.waker());
             }
         } else if let Some((_, poll_new_conn)) = self.conn_rx.lock().as_ref()
-            && events.contains(IoEvents::IN) {
-                poll_new_conn.register(context.waker());
-            }
+            && events.contains(IoEvents::IN)
+        {
+            poll_new_conn.register(context.waker());
+        }
         self.poll_state.register(context.waker());
     }
 }

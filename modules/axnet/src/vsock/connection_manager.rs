@@ -140,11 +140,6 @@ impl Connection {
     }
 
     #[inline]
-    pub fn rx_iter(&self) -> impl Iterator<Item = &u8> {
-        self.rx_consumer.iter()
-    }
-
-    #[inline]
     pub fn add_tx_bytes(&mut self, count: usize) {
         self.tx_bytes += count;
     }

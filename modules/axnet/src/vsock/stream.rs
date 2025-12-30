@@ -2,7 +2,7 @@ use alloc::sync::Arc;
 use core::task::Context;
 
 use axerrno::{AxError, AxResult, ax_bail, ax_err_type};
-use axio::{Buf, BufMut};
+use axio::prelude::*;
 use axpoll::{IoEvents, Pollable};
 use axsync::Mutex;
 
@@ -191,7 +191,7 @@ impl VsockTransportOps for VsockStreamTransport {
         })
     }
 
-    fn send(&self, src: &mut impl Buf, _options: SendOptions) -> AxResult<usize> {
+    fn send(&self, mut src: impl Read + IoBuf, _options: SendOptions) -> AxResult<usize> {
         let conn = self.get_connection()?;
         let conn_guard = conn.lock();
 
@@ -207,12 +207,14 @@ impl VsockTransportOps for VsockStreamTransport {
         drop(conn_guard);
 
         // now virtio-driver only support non-blocking send
-        let result = src.consume(|chunk| crate::device::vsock_send(conn_id, chunk));
+        let result = src.write_to(&mut axio::write_fn(|buf| {
+            crate::device::vsock_send(conn_id, buf)
+        }));
         conn.lock().add_tx_bytes(result.unwrap_or(0));
         result
     }
 
-    fn recv(&self, dst: &mut impl BufMut, options: RecvOptions) -> AxResult<usize> {
+    fn recv(&self, mut dst: impl Write, options: RecvOptions) -> AxResult<usize> {
         let conn = self.get_connection()?;
 
         self.general.recv_poller(self, || {
@@ -234,24 +236,15 @@ impl VsockTransportOps for VsockStreamTransport {
                 return Err(AxError::WouldBlock);
             }
 
-            let count = if options.flags.contains(RecvFlags::PEEK) {
-                // Peek mode: not remove data from buffer
-                let available = conn_guard.rx_buffer_used();
-                let to_read = dst.remaining_mut().min(available);
-                let data: alloc::vec::Vec<u8> =
-                    conn_guard.rx_iter().take(to_read).copied().collect();
-                dst.write(&data)?
-            } else {
-                // Normal mode: remove data from buffer
-                let (left, right) = conn_guard.rx_slices();
-                let mut count = dst.write(left)?;
+            let (left, right) = conn_guard.rx_slices();
+            let mut count = dst.write(left)?;
 
-                if count >= left.len() && !right.is_empty() {
-                    count += dst.write(right)?;
-                }
+            if count >= left.len() && !right.is_empty() {
+                count += dst.write(right)?;
+            }
+            if !options.flags.contains(RecvFlags::PEEK) {
                 conn_guard.advance_rx_read(count);
-                count
-            };
+            }
 
             if count > 0 {
                 trace!(
