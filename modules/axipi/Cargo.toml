@@ -24,3 +24,4 @@ crate_interface = "0.1.4"
 axcpu = { git = "https://github.com/arceos-org/axcpu.git", tag = "dev-v03" }
 axtask = { workspace = true, features = ["task-ext"] }
 page_table_multiarch.workspace = true
+kernel_guard = { workspace = true }

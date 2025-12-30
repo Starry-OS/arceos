@@ -47,6 +47,7 @@ pub fn init() {
 
 /// Executes a callback on the specified destination CPU via IPI.
 pub fn run_on_cpu<T: Into<Callback>>(name: &'static str, dest_cpu: usize, callback: T, wait: bool) {
+    let gurad = kernel_guard::NoPreempt::new();
     info!("Send IPI event to CPU {}", dest_cpu);
     if dest_cpu == this_cpu_id() {
         // Execute callback on current CPU immediately
@@ -69,6 +70,7 @@ pub fn run_on_cpu<T: Into<Callback>>(name: &'static str, dest_cpu: usize, callba
             }
         }
     }
+    drop(gurad); // rescheduling may occur when preemption is re-enabled.
 }
 
 pub fn run_on_bitmask_except_self<T: Into<MulticastCallback>>(
@@ -77,6 +79,7 @@ pub fn run_on_bitmask_except_self<T: Into<MulticastCallback>>(
     cpu_mask: AxCpuMask,
     wait: bool,
 ) {
+    let guard = kernel_guard::NoPreempt::new();
     let current_cpu_id = this_cpu_id();
     let cpu_num = axconfig::plat::CPU_NUM;
     let callback = callback.into();
@@ -116,6 +119,7 @@ pub fn run_on_bitmask_except_self<T: Into<MulticastCallback>>(
             }
         }
     }
+    drop(guard); // rescheduling may occur when preemption is re-enabled.
 }
 
 pub fn run_on_each_cpu_except_self<T: Into<MulticastCallback>>(
@@ -123,6 +127,7 @@ pub fn run_on_each_cpu_except_self<T: Into<MulticastCallback>>(
     callback: T,
     wait: bool,
 ) {
+    let guard = kernel_guard::NoPreempt::new();
     let current_cpu_id = this_cpu_id();
     let cpu_num = axconfig::plat::CPU_NUM;
     let callback = callback.into();
@@ -166,10 +171,12 @@ pub fn run_on_each_cpu_except_self<T: Into<MulticastCallback>>(
             }
         }
     }
+    drop(guard); // rescheduling may occur when preemption is re-enabled.
 }
 
 /// Executes a callback on all other CPUs via IPI.
 pub fn run_on_each_cpu<T: Into<MulticastCallback>>(name: &'static str, callback: T, wait: bool) {
+    let gurad = kernel_guard::NoPreempt::new();
     info!("Send IPI event to all other CPUs");
     let current_cpu_id = this_cpu_id();
     let cpu_num = axconfig::plat::CPU_NUM;
@@ -215,6 +222,7 @@ pub fn run_on_each_cpu<T: Into<MulticastCallback>>(name: &'static str, callback:
             }
         }
     }
+    drop(gurad); // rescheduling may occur when preemption is re-enabled.
 }
 
 /// The handler for IPI events. It retrieves the events from the queue and calls
