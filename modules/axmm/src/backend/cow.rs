@@ -26,14 +26,18 @@ enum FrameAction {
 }
 
 impl FrameTableRefCount {
+
+    const INITIAL_CNT : u8 = 1;
+
     const fn new() -> Self {
         Self {
             table: BTreeMap::new(),
         }
     }
 
-    fn inc_ref(&mut self, paddr: PhysAddr) {
-        *self.table.entry(paddr).or_insert(0) += 1;
+    fn init_frame(&mut self, paddr: PhysAddr) {
+        assert!(!self.table.contains_key(&paddr), "frame already initialized");
+        self.table.insert(paddr, Self::INITIAL_CNT);
     }
 
     fn dec_ref(&mut self, paddr: PhysAddr) -> usize {
@@ -54,8 +58,9 @@ impl FrameTableRefCount {
     fn with_frame_ref<F, R>(&mut self, paddr: PhysAddr, f: F) -> R
     where F: FnOnce(&mut u8) -> R,
     {
-        let cnt = self.table.entry(paddr).or_insert(0);
-        f(cnt)
+        assert!(self.table.contains_key(&paddr), "accessing unreferenced frame");
+        let count = self.table.get_mut(&paddr).unwrap();
+        f(count)
     }
 }
 
@@ -74,7 +79,7 @@ pub struct CowBackend {
 impl CowBackend {
     fn alloc_new_frame(&self, zeroed: bool) -> AxResult<PhysAddr> {
         let frame = alloc_frame(zeroed, self.size)?;
-        FRAME_TABLE.lock().inc_ref(frame);
+        FRAME_TABLE.lock().init_frame(frame);
         Ok(frame)
     }
 
