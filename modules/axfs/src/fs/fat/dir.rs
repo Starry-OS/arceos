@@ -201,7 +201,9 @@ impl DirNodeOps for FatDirNode {
         // The default implementation throws EEXIST if dst exists, so we need to
         // handle it
         match dst_dir.inner.borrow(&fs).remove(dst_name) {
-            Ok(_) => {}
+            Ok(_) => {
+                warn!("对 I removed {}", dst_name);
+            }
             Err(fatfs::Error::NotFound) => {}
             Err(err) => return Err(into_vfs_err(err)),
         }
