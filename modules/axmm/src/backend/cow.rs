@@ -16,27 +16,50 @@ use crate::{
     backend::{Backend, BackendOps, alloc_frame, dealloc_frame, pages_in},
 };
 
-static FRAME_TABLE: SpinNoIrq<BTreeMap<PhysAddr, u8>> = SpinNoIrq::new(BTreeMap::new());
-
-fn inc_frame_ref(paddr: PhysAddr) {
-    let mut table = FRAME_TABLE.lock();
-    *table.entry(paddr).or_insert(0) += 1;
+struct FrameTableRefCount {
+    table: BTreeMap<PhysAddr, u8>,
 }
 
-fn dec_frame_ref(paddr: PhysAddr) -> usize {
-    let mut table = FRAME_TABLE.lock();
-    if let Some(count) = table.get_mut(&paddr) {
-        let prev = *count;
-        if prev == 1 {
-            table.remove(&paddr);
-        } else {
-            *count -= 1;
+enum FrameAction {
+    UpgradeOnly,
+    Copy,
+}
+
+impl FrameTableRefCount {
+    const fn new() -> Self {
+        Self {
+            table: BTreeMap::new(),
         }
-        prev as usize
-    } else {
-        0
+    }
+
+    fn inc_ref(&mut self, paddr: PhysAddr) {
+        *self.table.entry(paddr).or_insert(0) += 1;
+    }
+
+    fn dec_ref(&mut self, paddr: PhysAddr) -> usize {
+        if let Some(count) = self.table.get_mut(&paddr) {
+            let prev = *count;
+            if prev == 1 {
+                self.table.remove(&paddr);
+            } else {
+                *count -= 1;
+            }
+            prev as usize
+        } else {
+            error!("decrementing unreferenced frame");
+            0
+        }
+    }
+
+    fn with_frame_ref<F, R>(&mut self, paddr: PhysAddr, f: F) -> R
+    where F: FnOnce(&mut u8) -> R,
+    {
+        let cnt = self.table.entry(paddr).or_insert(0);
+        f(cnt)
     }
 }
+
+static FRAME_TABLE: SpinNoIrq<FrameTableRefCount> = SpinNoIrq::new(FrameTableRefCount::new());
 
 /// Copy-on-write mapping backend.
 ///
@@ -49,14 +72,19 @@ pub struct CowBackend {
 }
 
 impl CowBackend {
+    fn alloc_new_frame(&self, zeroed: bool) -> AxResult<PhysAddr> {
+        let frame = alloc_frame(zeroed, self.size)?;
+        FRAME_TABLE.lock().inc_ref(frame);
+        Ok(frame)
+    }
+
     fn alloc_new_at(
         &self,
         vaddr: VirtAddr,
         flags: MappingFlags,
         pt: &mut PageTableMut,
     ) -> AxResult {
-        let frame = alloc_frame(true, self.size)?;
-        inc_frame_ref(frame);
+        let frame = self.alloc_new_frame(true)?;
 
         if let Some((file, file_start, file_end)) = &self.file {
             let buf = unsafe {
@@ -86,31 +114,39 @@ impl CowBackend {
         flags: MappingFlags,
         pt: &mut PageTableMut,
     ) -> AxResult {
-        match dec_frame_ref(paddr) {
-            0 => unreachable!(),
-            // There is only one AddrSpace reference to the page,
-            // so there is no need to copy it.
-            1 => {
-                inc_frame_ref(paddr);
+        // check map is still valid
+        let (cur, _, sz) =
+            pt.query(vaddr).map_err(|_| AxError::BadAddress)?;
+
+        if cur != paddr || sz != self.size {
+            return Ok(());
+        }
+
+        let action = FRAME_TABLE.lock().with_frame_ref(paddr, |cnt| {
+            if *cnt == 1 {
+                FrameAction::UpgradeOnly
+            } else {
+                *cnt -= 1;
+                FrameAction::Copy
+            }
+        });
+
+        match action {
+            FrameAction::UpgradeOnly => {
                 pt.protect(vaddr, flags)?;
             }
-            // Allocates the new page and copies the contents of the original page,
-            // remapping the virtual address to the physical address of the new page.
-            2.. => {
-                let new_frame = alloc_frame(false, self.size)?;
-                inc_frame_ref(new_frame);
+            FrameAction::Copy => {
+                let new_frame = self.alloc_new_frame(false)?;
                 unsafe {
                     core::ptr::copy_nonoverlapping(
-                        phys_to_virt(paddr).as_ptr(),
-                        phys_to_virt(new_frame).as_mut_ptr(),
-                        self.size as _,
+                    phys_to_virt(paddr).as_ptr(),
+                    phys_to_virt(new_frame).as_mut_ptr(),
+                    self.size as _,
                     );
                 }
-
                 pt.remap(vaddr, new_frame, flags)?;
             }
         }
-
         Ok(())
     }
 }
@@ -130,7 +166,7 @@ impl BackendOps for CowBackend {
         for addr in pages_in(range, self.size)? {
             if let Ok((frame, _flags, page_size)) = pt.unmap(addr) {
                 assert_eq!(page_size, self.size);
-                if dec_frame_ref(frame) == 1 {
+                if FRAME_TABLE.lock().dec_ref(frame) == 1 {
                     dealloc_frame(frame, self.size);
                 }
             } else {
@@ -191,7 +227,10 @@ impl BackendOps for CowBackend {
                     // - Update its permissions in the old page table using `flags`.
                     // - Map the same physical page into the new page table at the same
                     // virtual address, with the same page size and `flags`.
-                    inc_frame_ref(paddr);
+                    FRAME_TABLE.lock().with_frame_ref(paddr, |cnt| {
+                        assert!(*cnt > 0, "referencing unreferenced frame");
+                        *cnt += 1;
+                    });
 
                     old_pt.protect(vaddr, cow_flags)?;
                     new_pt.map(vaddr, paddr, self.size, cow_flags)?;
