@@ -1,4 +1,4 @@
-use alloc::{boxed::Box, collections::btree_map::BTreeMap, sync::Arc};
+use alloc::{boxed::Box,sync::Arc, collections::BTreeMap};
 use core::slice;
 
 use axerrno::{AxError, AxResult};
@@ -16,13 +16,19 @@ use crate::{
     backend::{Backend, BackendOps, alloc_frame, dealloc_frame, pages_in},
 };
 
-struct FrameTableRefCount {
-    table: BTreeMap<PhysAddr, u8>,
+struct FrameRefCnt(u8);
+
+impl FrameRefCnt {
+    fn with_frame_ref<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce(&mut u8) -> R,
+    {
+        f(&mut self.0)
+    }
 }
 
-enum FrameAction {
-    UpgradeOnly,
-    Copy,
+struct FrameTableRefCount {
+    table: BTreeMap<PhysAddr, Arc<SpinNoIrq<FrameRefCnt>>>,
 }
 
 impl FrameTableRefCount {
@@ -35,32 +41,18 @@ impl FrameTableRefCount {
         }
     }
 
+    fn get_frame_ref(&mut self, paddr: PhysAddr) -> Option<Arc<SpinNoIrq<FrameRefCnt>>> {
+        self.table.get(&paddr).cloned()
+    }
+
     fn init_frame(&mut self, paddr: PhysAddr) {
-        assert!(!self.table.contains_key(&paddr), "frame already initialized");
-        self.table.insert(paddr, Self::INITIAL_CNT);
+        assert!(!self.table.contains_key(&paddr), "initializing already referenced frame");
+        self.table.insert(paddr, Arc::new(SpinNoIrq::new(FrameRefCnt(Self::INITIAL_CNT))));
     }
 
-    fn dec_ref(&mut self, paddr: PhysAddr) -> usize {
-        if let Some(count) = self.table.get_mut(&paddr) {
-            let prev = *count;
-            if prev == 1 {
-                self.table.remove(&paddr);
-            } else {
-                *count -= 1;
-            }
-            prev as usize
-        } else {
-            error!("decrementing unreferenced frame");
-            0
-        }
-    }
-
-    fn with_frame_ref<F, R>(&mut self, paddr: PhysAddr, f: F) -> R
-    where F: FnOnce(&mut u8) -> R,
-    {
-        assert!(self.table.contains_key(&paddr), "accessing unreferenced frame");
-        let count = self.table.get_mut(&paddr).unwrap();
-        f(count)
+    fn remove_frame(&mut self, paddr: PhysAddr) {
+        assert!(self.table.contains_key(&paddr), "removing unreferenced frame");
+        self.table.remove(&paddr);
     }
 }
 
@@ -127,20 +119,20 @@ impl CowBackend {
             return Ok(());
         }
 
-        let action = FRAME_TABLE.lock().with_frame_ref(paddr, |cnt| {
-            if *cnt == 1 {
-                FrameAction::UpgradeOnly
-            } else {
-                *cnt -= 1;
-                FrameAction::Copy
-            }
-        });
-
-        match action {
-            FrameAction::UpgradeOnly => {
+        let mut frame_table = FRAME_TABLE.lock();
+        let frame = frame_table.get_frame_ref(paddr).ok_or(AxError::BadAddress)?;
+        drop(frame_table);
+        let mut frame = frame.lock();
+        match frame.0 {
+            0 => return Err(AxError::BadAddress),
+            1 => {
+                // Only one reference, just upgrade the permissions.
                 pt.protect(vaddr, flags)?;
+                return Ok(());
             }
-            FrameAction::Copy => {
+            _  => {
+                assert!(frame.0 > 1, "invalid frame reference count");
+                // Multiple references, need to copy the frame.
                 let new_frame = self.alloc_new_frame(false)?;
                 unsafe {
                     core::ptr::copy_nonoverlapping(
@@ -150,8 +142,17 @@ impl CowBackend {
                     );
                 }
                 pt.remap(vaddr, new_frame, flags)?;
+                frame.0 -= 1;
+                // Should remove the frame_table first and then dealloc the frame
+                // to avoid if first dealloc the frame and another thread
+                // can alloc the same frame before we remove the table entry.
+                if frame.0 == 0 {
+                    FRAME_TABLE.lock().remove_frame(paddr);
+                    dealloc_frame(paddr, self.size);
+                }
             }
         }
+
         Ok(())
     }
 }
@@ -171,7 +172,17 @@ impl BackendOps for CowBackend {
         for addr in pages_in(range, self.size)? {
             if let Ok((frame, _flags, page_size)) = pt.unmap(addr) {
                 assert_eq!(page_size, self.size);
-                if FRAME_TABLE.lock().dec_ref(frame) == 1 {
+                let frame_ref = FRAME_TABLE.lock().get_frame_ref(frame).ok_or(AxError::BadAddress)?;
+                let mut frame_ref = frame_ref.lock();
+                frame_ref.with_frame_ref(|cnt| {
+                    assert!(*cnt > 0, "referencing unreferenced frame");
+                    *cnt -= 1;
+                });
+                // Should remove the frame_table first and then dealloc the frame
+                // to avoid if first dealloc the frame and another thread
+                // can alloc the same frame before we remove the table entry.
+                if frame_ref.0 == 0 {
+                    FRAME_TABLE.lock().remove_frame(frame);
                     dealloc_frame(frame, self.size);
                 }
             } else {
@@ -232,11 +243,10 @@ impl BackendOps for CowBackend {
                     // - Update its permissions in the old page table using `flags`.
                     // - Map the same physical page into the new page table at the same
                     // virtual address, with the same page size and `flags`.
-                    FRAME_TABLE.lock().with_frame_ref(paddr, |cnt| {
-                        assert!(*cnt > 0, "referencing unreferenced frame");
-                        *cnt += 1;
-                    });
-
+                    let frame = FRAME_TABLE.lock().get_frame_ref(paddr).ok_or(AxError::BadAddress)?;
+                    let mut frame = frame.lock();
+                    assert!(frame.0 > 0, "referencing unreferenced frame");
+                    frame.0 += 1;
                     old_pt.protect(vaddr, cow_flags)?;
                     new_pt.map(vaddr, paddr, self.size, cow_flags)?;
                 }
