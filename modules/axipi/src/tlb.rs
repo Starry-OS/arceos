@@ -11,7 +11,7 @@ struct TlbFlushImpl;
 
 #[crate_interface::impl_interface]
 impl TlbFlushIf for TlbFlushImpl {
-    fn flush_all(vaddr: Option<VirtAddr>) {
+    fn flush_other_cpus(vaddr: Option<VirtAddr>) {
         if axconfig::plat::CPU_NUM == 1 || !secondary_cpus_ready() {
             // local
             axhal::asm::flush_tlb(None);
