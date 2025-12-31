@@ -5,7 +5,7 @@ use core::{
 };
 
 use axerrno::{AxError, AxResult, ax_bail, ax_err_type};
-use axio::{Buf, BufMut};
+use axio::prelude::*;
 use axpoll::{IoEvents, Pollable};
 use axsync::Mutex;
 use smoltcp::{
@@ -165,7 +165,7 @@ impl SocketOps for UdpSocket {
         Ok(())
     }
 
-    fn send(&self, src: &mut impl Buf, options: SendOptions) -> AxResult<usize> {
+    fn send(&self, mut src: impl Read + IoBuf, options: SendOptions) -> AxResult<usize> {
         let (remote_addr, source_addr) = match options.to {
             Some(addr) => {
                 let addr = IpEndpoint::from(addr.into_ip()?);
@@ -216,7 +216,7 @@ impl SocketOps for UdpSocket {
         })
     }
 
-    fn recv(&self, dst: &mut impl BufMut, options: RecvOptions) -> AxResult<usize> {
+    fn recv(&self, mut dst: impl Write, options: RecvOptions) -> AxResult<usize> {
         if self.local_addr.read().is_none() {
             ax_bail!(NotConnected);
         }

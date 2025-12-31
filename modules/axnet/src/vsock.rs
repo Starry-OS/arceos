@@ -7,7 +7,7 @@ use core::task::Context;
 
 pub use axdriver::prelude::{VsockAddr, VsockConnId};
 use axerrno::{AxError, AxResult};
-use axio::{Buf, BufMut};
+use axio::{IoBuf, IoBufMut, Read, Write};
 use axpoll::{IoEvents, Pollable};
 use enum_dispatch::enum_dispatch;
 
@@ -24,8 +24,8 @@ pub trait VsockTransportOps: Configurable + Pollable + Send + Sync {
     fn listen(&self) -> AxResult;
     fn connect(&self, peer_addr: VsockAddr) -> AxResult;
     fn accept(&self) -> AxResult<(VsockTransport, VsockAddr)>;
-    fn send(&self, src: &mut impl Buf, options: SendOptions) -> AxResult<usize>;
-    fn recv(&self, dst: &mut impl BufMut, options: RecvOptions<'_>) -> AxResult<usize>;
+    fn send(&self, src: impl Read + IoBuf, options: SendOptions) -> AxResult<usize>;
+    fn recv(&self, dst: impl Write, options: RecvOptions<'_>) -> AxResult<usize>;
     fn shutdown(&self, _how: Shutdown) -> AxResult;
     fn local_addr(&self) -> AxResult<Option<VsockAddr>>;
     fn peer_addr(&self) -> AxResult<Option<VsockAddr>>;
@@ -98,11 +98,11 @@ impl SocketOps for VsockSocket {
         })
     }
 
-    fn send(&self, src: &mut impl Buf, options: SendOptions) -> AxResult<usize> {
+    fn send(&self, src: impl Read + IoBuf, options: SendOptions) -> AxResult<usize> {
         self.transport.send(src, options)
     }
 
-    fn recv(&self, dst: &mut impl BufMut, options: RecvOptions<'_>) -> AxResult<usize> {
+    fn recv(&self, dst: impl Write + IoBufMut, options: RecvOptions<'_>) -> AxResult<usize> {
         self.transport.recv(dst, options)
     }
 

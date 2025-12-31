@@ -6,7 +6,7 @@ use core::{
 };
 
 use axerrno::{AxError, AxResult, ax_bail, ax_err_type};
-use axio::{Buf, BufMut};
+use axio::prelude::*;
 use axpoll::{IoEvents, PollSet, Pollable};
 use axsync::Mutex;
 use smoltcp::{
@@ -343,7 +343,7 @@ impl SocketOps for TcpSocket {
         })
     }
 
-    fn send(&self, src: &mut impl Buf, _options: SendOptions) -> AxResult<usize> {
+    fn send(&self, mut src: impl Read, _options: SendOptions) -> AxResult<usize> {
         // SAFETY: `self.handle` should be initialized in a connected socket.
         self.general.send_poller(self, || {
             poll_interfaces();
@@ -367,7 +367,7 @@ impl SocketOps for TcpSocket {
         })
     }
 
-    fn recv(&self, dst: &mut impl BufMut, options: RecvOptions<'_>) -> AxResult<usize> {
+    fn recv(&self, mut dst: impl Write + IoBufMut, options: RecvOptions<'_>) -> AxResult<usize> {
         if self.rx_closed.load(Ordering::Acquire) {
             return Err(AxError::NotConnected);
         }

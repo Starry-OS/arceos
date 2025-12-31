@@ -4,7 +4,7 @@ use core::task::Context;
 use async_channel::TryRecvError;
 use async_trait::async_trait;
 use axerrno::{AxError, AxResult};
-use axio::{Buf, BufMut};
+use axio::{Read, Write};
 use axpoll::{IoEvents, PollSet, Pollable};
 use axsync::Mutex;
 use spin::RwLock;
@@ -179,7 +179,7 @@ impl TransportOps for DgramTransport {
         Err(AxError::InvalidInput)
     }
 
-    fn send(&self, src: &mut impl Buf, options: SendOptions) -> AxResult<usize> {
+    fn send(&self, mut src: impl Read, options: SendOptions) -> AxResult<usize> {
         let mut message = Vec::new();
         src.read_to_end(&mut message)?;
         let len = message.len();
@@ -214,7 +214,7 @@ impl TransportOps for DgramTransport {
         Ok(len)
     }
 
-    fn recv(&self, dst: &mut impl BufMut, mut options: RecvOptions) -> AxResult<usize> {
+    fn recv(&self, mut dst: impl Write, mut options: RecvOptions) -> AxResult<usize> {
         self.general.recv_poller(self, move || {
             let mut guard = self.data_rx.lock();
             let Some((rx, _)) = guard.as_mut() else {
@@ -262,9 +262,10 @@ impl Pollable for DgramTransport {
 
     fn register(&self, context: &mut Context<'_>, events: IoEvents) {
         if let Some((_, poll)) = self.data_rx.lock().as_ref()
-            && events.contains(IoEvents::IN) {
-                poll.register(context.waker());
-            }
+            && events.contains(IoEvents::IN)
+        {
+            poll.register(context.waker());
+        }
     }
 }
 
