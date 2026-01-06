@@ -19,11 +19,19 @@ use crate::{
 struct FrameRefCnt(u8);
 
 impl FrameRefCnt {
-    fn with_frame_ref<F, R>(&mut self, f: F) -> R
-    where
-        F: FnOnce(&mut u8) -> R,
-    {
-        f(&mut self.0)
+    // This function may be lock FRAME_TABLE again, so the caller should drop the lock first.
+    fn drop_frame(&mut self, paddr: PhysAddr, page_size: PageSize) {
+        assert!(self.0 > 0, "dropping unreferenced frame");
+        self.0 -= 1;
+        if self.0 == 0 {
+            // Should remove the frame_table first and then dealloc the frame
+            // to avoid if first dealloc the frame and another thread
+            // can alloc the same frame before we remove the table entry.
+            // But here we can't access the frame table, so just leave it to
+            // the caller.
+            FRAME_TABLE.lock().remove_frame(paddr);
+            dealloc_frame(paddr, page_size);
+        }
     }
 }
 
@@ -111,14 +119,6 @@ impl CowBackend {
         flags: MappingFlags,
         pt: &mut PageTableMut,
     ) -> AxResult {
-        // check map is still valid
-        let (cur, _, sz) =
-            pt.query(vaddr).map_err(|_| AxError::BadAddress)?;
-
-        if cur != paddr || sz != self.size {
-            return Ok(());
-        }
-
         let mut frame_table = FRAME_TABLE.lock();
         let frame = frame_table.get_frame_ref(paddr).ok_or(AxError::BadAddress)?;
         drop(frame_table);
@@ -142,14 +142,7 @@ impl CowBackend {
                     );
                 }
                 pt.remap(vaddr, new_frame, flags)?;
-                frame.0 -= 1;
-                // Should remove the frame_table first and then dealloc the frame
-                // to avoid if first dealloc the frame and another thread
-                // can alloc the same frame before we remove the table entry.
-                if frame.0 == 0 {
-                    FRAME_TABLE.lock().remove_frame(paddr);
-                    dealloc_frame(paddr, self.size);
-                }
+                frame.drop_frame(paddr, self.size);
             }
         }
 
@@ -174,17 +167,7 @@ impl BackendOps for CowBackend {
                 assert_eq!(page_size, self.size);
                 let frame_ref = FRAME_TABLE.lock().get_frame_ref(frame).ok_or(AxError::BadAddress)?;
                 let mut frame_ref = frame_ref.lock();
-                frame_ref.with_frame_ref(|cnt| {
-                    assert!(*cnt > 0, "referencing unreferenced frame");
-                    *cnt -= 1;
-                });
-                // Should remove the frame_table first and then dealloc the frame
-                // to avoid if first dealloc the frame and another thread
-                // can alloc the same frame before we remove the table entry.
-                if frame_ref.0 == 0 {
-                    FRAME_TABLE.lock().remove_frame(frame);
-                    dealloc_frame(frame, self.size);
-                }
+                frame_ref.drop_frame(frame, self.size);
             } else {
                 // Deallocation is needn't if the page is not allocated.
             }
