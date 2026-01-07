@@ -80,6 +80,10 @@ impl Usages {
     fn dealloc(&mut self, kind: UsageKind, size: usize) {
         self.0[kind as usize] -= size;
     }
+
+    pub fn get(&self, kind: UsageKind) -> usize {
+        self.0[kind as usize]
+    }
 }
 
 impl fmt::Debug for Usages {
