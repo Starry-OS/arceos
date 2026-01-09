@@ -382,6 +382,14 @@ impl AddrSpace {
 
         Ok(new_aspace)
     }
+
+    /// Returns an iterator over the memory areas.
+    ///
+    /// This is required for `procfs` to generate `/proc/pid/maps`.
+    /// Exposing internal state for system introspection is a standard practice.
+    pub fn areas(&self) -> impl Iterator<Item = &memory_set::MemoryArea<Backend>> {
+        self.areas.iter()
+    }
 }
 
 impl fmt::Debug for AddrSpace {
