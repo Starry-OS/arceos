@@ -1,4 +1,4 @@
-use alloc::{boxed::Box,sync::Arc, collections::BTreeMap};
+use alloc::{boxed::Box, sync::Arc, collections::BTreeMap};
 use core::slice;
 
 use axerrno::{AxError, AxResult};
@@ -19,7 +19,7 @@ use crate::{
 struct FrameRefCnt(u8);
 
 impl FrameRefCnt {
-    // This function may be lock FRAME_TABLE again, so the caller should drop the lock first.
+    // This function may lock FRAME_TABLE again, so the caller should drop the lock first.
     fn drop_frame(&mut self, paddr: PhysAddr, page_size: PageSize) {
         assert!(self.0 > 0, "dropping unreferenced frame");
         self.0 -= 1;
@@ -41,7 +41,7 @@ struct FrameTableRefCount {
 
 impl FrameTableRefCount {
 
-    const INITIAL_CNT : u8 = 1;
+    const INITIAL_CNT: u8 = 1;
 
     const fn new() -> Self {
         Self {
@@ -123,15 +123,14 @@ impl CowBackend {
         let frame = frame_table.get_frame_ref(paddr).ok_or(AxError::BadAddress)?;
         drop(frame_table);
         let mut frame = frame.lock();
+        assert!(frame.0 > 0, "invalid frame reference count");
         match frame.0 {
-            0 => return Err(AxError::BadAddress),
             1 => {
                 // Only one reference, just upgrade the permissions.
                 pt.protect(vaddr, flags)?;
                 return Ok(());
             }
-            _  => {
-                assert!(frame.0 > 1, "invalid frame reference count");
+            _ => {
                 // Multiple references, need to copy the frame.
                 let new_frame = self.alloc_new_frame(false)?;
                 unsafe {
