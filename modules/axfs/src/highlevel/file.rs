@@ -299,24 +299,26 @@ impl Default for OpenOptions {
     }
 }
 
-const PAGE_SIZE: usize = 4096;
+const PAGE_SIZE_4K: usize = 4096;
 
 #[derive(Debug)]
 pub struct PageCache {
     addr: VirtAddr,
     dirty: bool,
+    size: usize,
 }
 
 impl PageCache {
-    fn new() -> VfsResult<Self> {
+    fn new(size: usize) -> VfsResult<Self> {
         let addr = global_allocator()
-            .alloc_pages(1, PAGE_SIZE, UsageKind::PageCache)
+            .alloc_pages(size / PAGE_SIZE_4K, size, UsageKind::PageCache)
             .inspect_err(|err| {
                 warn!("Failed to allocate page cache: {:?}", err);
             })?;
         Ok(Self {
             addr: addr.into(),
             dirty: false,
+            size,
         })
     }
 
@@ -329,7 +331,11 @@ impl PageCache {
     }
 
     pub fn data(&mut self) -> &mut [u8] {
-        unsafe { core::slice::from_raw_parts_mut(self.addr.as_mut_ptr(), PAGE_SIZE) }
+        unsafe { core::slice::from_raw_parts_mut(self.addr.as_mut_ptr(), PAGE_SIZE_4K) }
+    }
+
+    pub fn size(&self) -> usize {
+        self.size
     }
 }
 
@@ -338,7 +344,11 @@ impl Drop for PageCache {
         if self.dirty {
             warn!("dirty page dropped without flushing");
         }
-        global_allocator().dealloc_pages(self.addr.as_usize(), 1, UsageKind::PageCache);
+        global_allocator().dealloc_pages(
+            self.addr.as_usize(),
+            self.size / PAGE_SIZE_4K,
+            UsageKind::PageCache,
+        );
     }
 }
 
@@ -465,8 +475,8 @@ impl CachedFile {
             (listener.listener)(pn, page);
         }
         if page.dirty {
-            let page_start = pn as u64 * PAGE_SIZE as u64;
-            let len = (file.len()?.saturating_sub(page_start)).min(PAGE_SIZE as u64) as usize;
+            let page_start = pn as u64 * PAGE_SIZE_4K as u64;
+            let len = (file.len()?.saturating_sub(page_start)).min(page.size() as u64) as usize;
             if len > 0 {
                 file.write_at(&page.data()[..len], page_start)?;
             }
@@ -480,6 +490,7 @@ impl CachedFile {
         file: &FileNode,
         cache: &'a mut LruCache<u32, PageCache>,
         pn: u32,
+        size: usize,
     ) -> VfsResult<(&'a mut PageCache, Option<(u32, PageCache)>)> {
         // TODO: Matching the result of `get_mut` confuses compiler. See
         // https://users.rust-lang.org/t/return-do-not-release-mutable-borrow/55757.
@@ -496,11 +507,11 @@ impl CachedFile {
         }
 
         // Page not in cache, read it
-        let mut page = PageCache::new()?;
+        let mut page = PageCache::new(size)?;
         if self.in_memory {
             page.data().fill(0);
         } else {
-            file.read_at(page.data(), pn as u64 * PAGE_SIZE as u64)?;
+            file.read_at(page.data(), pn as u64 * PAGE_SIZE_4K as u64)?;
         }
         cache.put(pn, page);
         Ok((cache.get_mut(&pn).unwrap(), evicted))
@@ -513,10 +524,11 @@ impl CachedFile {
     pub fn with_page_or_insert<R>(
         &self,
         pn: u32,
+        size: usize,
         f: impl FnOnce(&mut PageCache, Option<(u32, PageCache)>) -> VfsResult<R>,
     ) -> VfsResult<R> {
         let mut guard = self.shared.page_cache.lock();
-        let (page, evicted) = self.page_or_insert(self.inner.entry().as_file()?, &mut guard, pn)?;
+        let (page, evicted) = self.page_or_insert(self.inner.entry().as_file()?, &mut guard, pn, size)?;
         f(page, evicted)
     }
 
@@ -528,21 +540,27 @@ impl CachedFile {
     ) -> VfsResult<T> {
         let file = self.inner.entry().as_file()?;
         let mut initial = page_initial(file)?;
-        let start_page = (range.start / PAGE_SIZE as u64) as u32;
-        let end_page = range.end.div_ceil(PAGE_SIZE as u64) as u32;
-        let mut page_offset = (range.start % PAGE_SIZE as u64) as usize;
-        for pn in start_page..end_page {
-            let page_start = pn as u64 * PAGE_SIZE as u64;
 
+        // Skip the chunks before the range
+        let (mut pn, mut chunk_start) = self.locate_offset(range.start);
+
+        while chunk_start < range.end {
             let mut guard = self.shared.page_cache.lock();
-            let page = self.page_or_insert(file, &mut guard, pn)?.0;
+            let page = self.page_or_insert(file, &mut guard, pn, PAGE_SIZE_4K)?.0;
+            let size = page.size() as u64;
+            let chunk_end = chunk_start + size;
 
-            initial = page_each(
-                initial,
-                page,
-                page_offset..(range.end - page_start).min(PAGE_SIZE as u64) as usize,
-            )?;
-            page_offset = 0;
+            let read_start = core::cmp::max(chunk_start, range.start);
+            let read_end = core::cmp::min(chunk_end, range.end);
+
+            if read_start < read_end {
+                let page_offset = (read_start - chunk_start) as usize;
+                let len = (read_end - read_start) as usize;
+                initial = page_each(initial, page, page_offset..page_offset + len)?;
+            }
+
+            chunk_start = chunk_end;
+            pn += size as u32 / PAGE_SIZE_4K as u32;
         }
 
         Ok(initial)
@@ -603,18 +621,20 @@ impl CachedFile {
         let file = self.inner.entry().as_file()?;
         let old_len = file.len()?;
         file.set_len(len)?;
+        let min_len = core::cmp::min(len, old_len);
+        // Skip the chunks before the min_len
+        let (pn, chunk_start) = self.locate_offset(min_len);
 
-        let old_last_page = (old_len / PAGE_SIZE as u64) as u32;
-        let new_last_page = (len / PAGE_SIZE as u64) as u32;
         if old_len < len {
+            // pn is the old page num
             let mut guard = self.shared.page_cache.lock();
-            if let Some(page) = guard.get_mut(&old_last_page) {
-                let page_start = old_last_page as u64 * PAGE_SIZE as u64;
+            if let Some(page) = guard.get_mut(&pn) {
+                let page_start = chunk_start;
                 let old_page_offset = (old_len - page_start) as usize;
-                let new_page_offset = (len - page_start).min(PAGE_SIZE as u64) as usize;
+                let new_page_offset = (len - page_start).min(page.size() as u64) as usize;
                 page.data()[old_page_offset..new_page_offset].fill(0);
             }
-        } else if old_last_page > new_last_page {
+        } else {
             // For truncating, we need to remove all pages that are beyond the
             // new length
             // TODO(mivik): can this be more efficient?
@@ -622,15 +642,16 @@ impl CachedFile {
             let keys = guard
                 .iter()
                 .map(|(k, _)| *k)
-                .filter(|it| *it > new_last_page)
+                .filter(|it| *it > pn)
                 .collect::<Vec<_>>();
+
             for pn in keys {
-                if let Some(mut page) = guard.pop(&pn)
-                    && !self.in_memory
-                {
-                    // Don't write back pages since they're discarded
-                    page.dirty = false;
-                    self.evict_cache(file, pn, &mut page)?;
+                if let Some(mut page) = guard.pop(&pn) {
+                    if !self.in_memory {
+                        // Don't write back pages since they're discarded
+                        page.dirty = false;
+                        self.evict_cache(file, pn, &mut page)?;
+                    }
                 }
             }
         }
@@ -652,6 +673,27 @@ impl CachedFile {
 
     pub fn location(&self) -> &Location {
         &self.inner
+    }
+
+    /// Find the cache page that covers `offset` (bytes), returning (page_index,
+    /// page_start_offset).
+    pub fn locate_offset(&self, offset: u64) -> (u32, u64) {
+        let mut pn = 0;
+        let mut chunk_start = 0;
+        let mut size;
+        while chunk_start < offset {
+            size = self.with_page(pn, |opt_page| {
+                opt_page.map(|page| page.size()).unwrap_or(PAGE_SIZE_4K)
+            }) as u64;
+
+            let chunk_end = chunk_start + size;
+            if chunk_end > offset {
+                break;
+            }
+            chunk_start = chunk_end;
+            pn += size as u32 / PAGE_SIZE_4K as u32;
+        }
+        (pn, chunk_start)
     }
 }
 
