@@ -466,8 +466,10 @@ impl CachedFile {
         }
         if page.dirty {
             let page_start = pn as u64 * PAGE_SIZE as u64;
-            let len = (file.len()? - page_start).min(PAGE_SIZE as u64) as usize;
-            file.write_at(&page.data()[..len], page_start)?;
+            let len = (file.len()?.saturating_sub(page_start)).min(PAGE_SIZE as u64) as usize;
+            if len > 0 {
+                file.write_at(&page.data()[..len], page_start)?;
+            }
             page.dirty = false;
         }
         Ok(())
