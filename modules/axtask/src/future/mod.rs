@@ -12,7 +12,10 @@ use core::{
 
 use kernel_guard::NoPreemptIrqSave;
 
-use crate::{AxTaskRef, WeakAxTaskRef, current, current_run_queue, select_run_queue};
+use crate::{
+    executor,
+    AxTaskRef, WeakAxTaskRef, current, current_run_queue, select_run_queue,
+};
 
 mod poll;
 pub use poll::*;
@@ -49,8 +52,13 @@ impl Wake for AxWaker {
 
 /// Blocks the current task until the given future is resolved.
 ///
-/// Note that this doesn't handle interruption and is not recommended for direct
-/// use in most cases.
+/// While waiting for the main future, this function also drives other async tasks
+/// in the per-CPU executor. The thread only blocks when both:
+/// - The main future is pending (not yet ready)
+/// - The per-CPU executor has no ready tasks to run
+///
+/// When async tasks in the executor are woken, they will also wake up this
+/// blocked thread, ensuring that the executor continues to make progress.
 pub fn block_on<F: IntoFuture>(f: F) -> F::Output {
     let mut fut = pin!(f.into_future());
 
@@ -66,16 +74,32 @@ pub fn block_on<F: IntoFuture>(f: F) -> F::Output {
 
     loop {
         woke.store(false, Ordering::Release);
-        match fut.as_mut().poll(&mut cx) {
-            Poll::Pending => {
-                if !woke.load(Ordering::Acquire) {
-                    current_run_queue::<NoPreemptIrqSave>().blocked_resched();
-                } else {
-                    // Immediately woken
-                    crate::yield_now();
-                }
+
+        if let Poll::Ready(output) = fut.as_mut().poll(&mut cx) {
+            return output;
+        }
+
+        // While waiting for the main future, this function also drives other async tasks
+        loop {
+            let seen = executor::wake_count();
+
+            while executor::run_once().is_some() {}
+
+            let should_block = {
+                let _guard = kernel_guard::NoPreempt::new();
+                executor::is_empty()
+                    && executor::wake_count() == seen
+                    && !woke.load(Ordering::Acquire)
+            };
+
+            if should_block {
+                executor::set_blocked_task(Arc::downgrade(&task));
+                current_run_queue::<NoPreemptIrqSave>().blocked_resched();
+                executor::clear_blocked_task();
+                break;
+            } else if woke.load(Ordering::Acquire) {
+                break;
             }
-            Poll::Ready(output) => break output,
         }
     }
 }

@@ -96,6 +96,7 @@ pub fn init_scheduler_with_cpu_num(cpu_num: usize) {
     CPU_NUM.store(cpu_num, core::sync::atomic::Ordering::Relaxed);
 
     crate::run_queue::init();
+    crate::executor::init();
 
     info!("  use {} scheduler.", Scheduler::scheduler_name());
 }

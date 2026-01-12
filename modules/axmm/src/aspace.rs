@@ -113,6 +113,10 @@ impl AddrSpace {
         self.areas.find(vaddr)
     }
 
+    pub fn find_area(&self, vaddr: VirtAddr) -> Option<&MemoryArea<Backend>> {
+        self.areas.find(vaddr)
+    }
+
     /// Add a new linear mapping.
     ///
     /// See [`Backend`] for more details about the mapping backends.
