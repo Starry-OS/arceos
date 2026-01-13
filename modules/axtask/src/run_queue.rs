@@ -401,7 +401,8 @@ impl<G: BaseGuard> CurrentRunQueueRef<'_, G> {
         assert!(curr.is_running());
         assert!(!curr.is_idle());
         // we must not block current task with preemption disabled.
-        // Current expected preempt count is 1 for `NoPreemptIrqSave`.
+        // Current expected preempt count is 2 for `NoPreemptIrqSave` because we also hold
+        // the `woke` SpinNoIrqGuard lock here.
         #[cfg(feature = "preempt")]
         assert!(curr.can_preempt(2));
 

@@ -24,11 +24,11 @@ impl FrameRefCnt {
         assert!(self.0 > 0, "dropping unreferenced frame");
         self.0 -= 1;
         if self.0 == 0 {
-            // Should remove the frame_table first and then dealloc the frame
-            // to avoid if first dealloc the frame and another thread
-            // can alloc the same frame before we remove the table entry.
-            // But here we can't access the frame table, so just leave it to
-            // the caller.
+            // Remove the frame from FRAME_TABLE before deallocating it to avoid a race:
+            // if we dealloc the frame first, another thread could allocate the same
+            // physical frame before we remove the table entry. This function assumes
+            // the caller is not holding the FRAME_TABLE lock, so it is safe to lock
+            // FRAME_TABLE here and perform the removal.
             FRAME_TABLE.lock().remove_frame(paddr);
             dealloc_frame(paddr, page_size);
         }
@@ -135,9 +135,9 @@ impl CowBackend {
                 let new_frame = self.alloc_new_frame(false)?;
                 unsafe {
                     core::ptr::copy_nonoverlapping(
-                    phys_to_virt(paddr).as_ptr(),
-                    phys_to_virt(new_frame).as_mut_ptr(),
-                    self.size as _,
+                        phys_to_virt(paddr).as_ptr(),
+                        phys_to_virt(new_frame).as_mut_ptr(),
+                        self.size as _,
                     );
                 }
                 pt.remap(vaddr, new_frame, flags)?;
@@ -229,6 +229,10 @@ impl BackendOps for CowBackend {
                     let mut frame = frame.lock();
                     assert!(frame.0 > 0, "referencing unreferenced frame");
                     frame.0 += 1;
+                    if frame.0 == u8::MAX {
+                        warn!("frame reference count overflow");
+                        return Err(AxError::BadAddress);
+                    }
                     old_pt.protect(vaddr, cow_flags)?;
                     new_pt.map(vaddr, paddr, self.size, cow_flags)?;
                 }
