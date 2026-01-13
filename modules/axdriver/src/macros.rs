@@ -82,7 +82,7 @@ macro_rules! for_each_drivers {
         }
         #[cfg(block_dev = "sdmmc")]
         {
-            type $drv_type = crate::drivers::SdMmcDriver;
+            type $drv_type = crate::drivers::SdMmcBlock;
             $code
         }
         #[cfg(block_dev = "bcm2835-sdhci")]
@@ -98,6 +98,11 @@ macro_rules! for_each_drivers {
         #[cfg(net_dev = "fxmac")]
         {
             type $drv_type = crate::drivers::FXmacDriver;
+            $code
+        }
+        #[cfg(net_dev = "dwmac")]
+        {
+            type $drv_type = crate::drivers::DwmacDriver;
             $code
         }
     }};

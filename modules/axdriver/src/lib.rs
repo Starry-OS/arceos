@@ -77,8 +77,14 @@ mod structs;
 #[cfg(feature = "virtio")]
 mod virtio;
 
+#[cfg(feature = "dwmac")]
+mod dwmac;
+
 #[cfg(feature = "ixgbe")]
 mod ixgbe;
+
+#[cfg(feature = "gpt")]
+mod gpt;
 
 pub mod prelude;
 

@@ -84,18 +84,22 @@ cfg_if::cfg_if! {
 cfg_if::cfg_if! {
     if #[cfg(block_dev = "sdmmc")] {
         use axhal::mem::phys_to_virt;
+        use axdriver_block::sdmmc::SdMmcDriver;
+        use super::gpt::GptPartitionDev;
 
-        pub struct SdMmcDriver;
-        register_block_driver!(SdMmcDriver, axdriver_block::sdmmc::SdMmcDriver);
+        pub struct SdMmcBlock;
+        register_block_driver!(SdMmcBlock, GptPartitionDev<SdMmcDriver>);
 
-        impl DriverProbe for SdMmcDriver {
+        impl DriverProbe for SdMmcBlock {
             fn probe_global() -> Option<AxDeviceEnum> {
+                let root = axconfig::devices::ROOT_PARTITION_NAME.parse().unwrap();
+                info!("Probe SD MMC ROOT Part: {:?} @ {:#x}", root, axconfig::devices::SDMMC_PADDR);
                 let sdmmc = unsafe {
-                    axdriver_block::sdmmc::SdMmcDriver::new(
+                        SdMmcDriver::new(
                         phys_to_virt(axconfig::devices::SDMMC_PADDR.into()).into(),
                     )
                 };
-                Some(AxDeviceEnum::from_block(sdmmc))
+                GptPartitionDev::new(sdmmc, |part| part.name == root).ok().map(AxDeviceEnum::from_block)
             }
         }
     }
@@ -204,6 +208,43 @@ cfg_if::cfg_if! {
             fn probe_global() -> Option<AxDeviceEnum> {
                 info!("fxmac for phytiumpi probe global");
                 axdriver_net::fxmac::FXmacNic::init(0).ok().map(AxDeviceEnum::from_net)
+            }
+        }
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(net_dev = "dwmac")] {
+        use crate::dwmac::DwmacHalImpl;
+        use core::ptr::NonNull;
+
+        pub struct DwmacDriver;
+        register_net_driver!(DwmacDriver, axdriver_net::dwmac::DwmacNic<DwmacHalImpl>);
+
+        impl DriverProbe for DwmacDriver {
+            #[cfg(bus = "mmio")]
+            fn probe_mmio(mmio_base: usize, mmio_size: usize) -> Option<AxDeviceEnum> {
+                // Try both GMAC0 and GMAC1 for tutorial
+                if mmio_base == axconfig::devices::ETHERNET1_PADDR {
+                    let gmac_name = "GMAC1";
+                    info!("DWMAC tutorial device found at {:#x} ({})", mmio_base, gmac_name);
+
+                    let base_ptr = unsafe {  core::ptr::NonNull::new_unchecked(axhal::mem::phys_to_virt(mmio_base.into()).as_mut_ptr()) };
+
+                    // Initialize the DWMAC device (clock verification is now informational only)
+                    match axdriver_net::dwmac::DwmacNic::<DwmacHalImpl>::init(base_ptr, mmio_size) {
+                        Ok(device) => {
+                            info!("✅ DWMAC tutorial device ({}) initialized successfully!", gmac_name);
+                            Some(AxDeviceEnum::Net(device))
+                        }
+                        Err(e) => {
+                            error!("❌ DWMAC tutorial device ({}) initialization failed: {}", gmac_name, e);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                }
             }
         }
     }
