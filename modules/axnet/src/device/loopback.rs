@@ -1,5 +1,5 @@
 use alloc::vec;
-use core::task::Waker;
+use core::{net::Ipv4Addr, task::Waker};
 
 use axpoll::PollSet;
 use smoltcp::{
@@ -10,20 +10,22 @@ use smoltcp::{
 
 use crate::{
     consts::{SOCKET_BUFFER_SIZE, STANDARD_MTU},
-    device::Device,
+    device::{Device, DeviceFlags, DeviceType},
 };
 
 pub struct LoopbackDevice {
+    index: u32,
     buffer: PacketBuffer<'static, ()>,
     poll: PollSet,
 }
 impl LoopbackDevice {
-    pub fn new() -> Self {
+    pub fn new(index: u32) -> Self {
         let buffer = PacketBuffer::new(
             vec![PacketMetadata::EMPTY; SOCKET_BUFFER_SIZE],
             vec![0u8; STANDARD_MTU * SOCKET_BUFFER_SIZE],
         );
         Self {
+            index,
             buffer,
             poll: PollSet::new(),
         }
@@ -33,6 +35,26 @@ impl LoopbackDevice {
 impl Device for LoopbackDevice {
     fn name(&self) -> &str {
         "lo"
+    }
+
+    fn get_type(&self) -> DeviceType {
+        DeviceType::LOOPBACK
+    }
+
+    fn get_flags(&self) -> DeviceFlags {
+        DeviceFlags::UP | DeviceFlags::LOOPBACK | DeviceFlags::RUNNING
+    }
+
+    fn get_index(&self) -> u32 {
+        self.index
+    }
+
+    fn ipv4_addr(&self) -> Option<Ipv4Addr> {
+        Some(Ipv4Addr::new(127, 0, 0, 1))
+    }
+
+    fn prefix_len(&self) -> Option<u8> {
+        Some(8)
     }
 
     fn recv(&mut self, buffer: &mut PacketBuffer<()>, _timestamp: Instant) -> bool {

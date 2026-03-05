@@ -6,6 +6,8 @@ use core::{
     task::Context,
 };
 
+#[cfg(feature = "netlink")]
+use crate::netlink::{NetlinkSocket, NetlinkSocketAddr};
 #[cfg(feature = "vsock")]
 use axdriver::prelude::VsockAddr;
 use axerrno::{AxError, AxResult, LinuxError};
@@ -29,6 +31,8 @@ pub enum SocketAddrEx {
     Unix(UnixSocketAddr),
     #[cfg(feature = "vsock")]
     Vsock(VsockAddr),
+    #[cfg(feature = "netlink")]
+    Netlink(NetlinkSocketAddr),
 }
 
 impl SocketAddrEx {
@@ -38,6 +42,8 @@ impl SocketAddrEx {
             SocketAddrEx::Unix(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
             #[cfg(feature = "vsock")]
             SocketAddrEx::Vsock(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
+            #[cfg(feature = "netlink")]
+            SocketAddrEx::Netlink(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
         }
     }
 
@@ -47,6 +53,8 @@ impl SocketAddrEx {
             SocketAddrEx::Ip(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
             #[cfg(feature = "vsock")]
             SocketAddrEx::Vsock(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
+            #[cfg(feature = "netlink")]
+            SocketAddrEx::Netlink(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
         }
     }
 
@@ -56,6 +64,19 @@ impl SocketAddrEx {
             SocketAddrEx::Ip(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
             SocketAddrEx::Unix(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
             SocketAddrEx::Vsock(addr) => Ok(addr),
+            #[cfg(feature = "netlink")]
+            SocketAddrEx::Netlink(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
+        }
+    }
+
+    #[cfg(feature = "netlink")]
+    pub fn into_netlink(self) -> AxResult<NetlinkSocketAddr> {
+        match self {
+            SocketAddrEx::Ip(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
+            SocketAddrEx::Unix(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
+            #[cfg(feature = "vsock")]
+            SocketAddrEx::Vsock(_) => Err(AxError::from(LinuxError::EAFNOSUPPORT)),
+            SocketAddrEx::Netlink(addr) => Ok(addr),
         }
     }
 }
@@ -170,6 +191,8 @@ pub enum Socket {
     Unix(UnixSocket),
     #[cfg(feature = "vsock")]
     Vsock(VsockSocket),
+    #[cfg(feature = "netlink")]
+    Netlink(NetlinkSocket),
 }
 
 impl Pollable for Socket {
@@ -180,6 +203,8 @@ impl Pollable for Socket {
             Socket::Unix(unix) => unix.poll(),
             #[cfg(feature = "vsock")]
             Socket::Vsock(vsock) => vsock.poll(),
+            #[cfg(feature = "netlink")]
+            Socket::Netlink(netlink) => netlink.poll(),
         }
     }
 
@@ -190,6 +215,8 @@ impl Pollable for Socket {
             Socket::Unix(unix) => unix.register(context, events),
             #[cfg(feature = "vsock")]
             Socket::Vsock(vsock) => vsock.register(context, events),
+            #[cfg(feature = "netlink")]
+            Socket::Netlink(netlink) => netlink.register(context, events),
         }
     }
 }
