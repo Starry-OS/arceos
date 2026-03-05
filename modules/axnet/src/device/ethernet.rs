@@ -9,13 +9,13 @@ use smoltcp::{
     time::{Duration, Instant},
     wire::{
         ArpOperation, ArpPacket, ArpRepr, EthernetAddress, EthernetFrame, EthernetProtocol,
-        EthernetRepr, IpAddress, Ipv4Cidr,
+        EthernetRepr, IpAddress, Ipv4Address, Ipv4Cidr,
     },
 };
 
 use crate::{
     consts::{ETHERNET_MAX_PENDING_PACKETS, STANDARD_MTU},
-    device::Device,
+    device::{Device, DeviceFlags, DeviceType},
 };
 
 const EMPTY_MAC: EthernetAddress = EthernetAddress([0; 6]);
@@ -26,6 +26,7 @@ struct Neighbor {
 }
 
 pub struct EthernetDevice {
+    index: u32,
     name: String,
     inner: AxNetDevice,
     neighbors: HashMap<IpAddress, Option<Neighbor>>,
@@ -36,7 +37,7 @@ pub struct EthernetDevice {
 impl EthernetDevice {
     const NEIGHBOR_TTL: Duration = Duration::from_secs(60);
 
-    pub fn new(name: String, inner: AxNetDevice, ip: Ipv4Cidr) -> Self {
+    pub fn new(index: u32, name: String, inner: AxNetDevice, ip: Ipv4Cidr) -> Self {
         let pending_packets = PacketBuffer::new(
             vec![PacketMetadata::EMPTY; ETHERNET_MAX_PENDING_PACKETS],
             vec![
@@ -46,6 +47,7 @@ impl EthernetDevice {
             ],
         );
         Self {
+            index,
             name,
             inner,
             neighbors: HashMap::new(),
@@ -259,6 +261,30 @@ impl EthernetDevice {
 impl Device for EthernetDevice {
     fn name(&self) -> &str {
         &self.name
+    }
+
+    fn get_type(&self) -> DeviceType {
+        DeviceType::ETHER
+    }
+
+    fn get_flags(&self) -> DeviceFlags {
+        DeviceFlags::UP
+            | DeviceFlags::BROADCAST
+            | DeviceFlags::RUNNING
+            | DeviceFlags::LOWER_UP
+            | DeviceFlags::MULTICAST
+    }
+
+    fn get_index(&self) -> u32 {
+        self.index
+    }
+
+    fn ipv4_addr(&self) -> Option<Ipv4Address> {
+        Some(self.ip.address())
+    }
+
+    fn prefix_len(&self) -> Option<u8> {
+        Some(self.ip.prefix_len())
     }
 
     fn recv(&mut self, buffer: &mut PacketBuffer<()>, timestamp: Instant) -> bool {

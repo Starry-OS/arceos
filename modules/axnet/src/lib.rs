@@ -13,6 +13,7 @@
 //! [smoltcp]: https://github.com/smoltcp-rs/smoltcp
 
 #![no_std]
+#![feature(associated_type_defaults)]
 
 #[macro_use]
 extern crate log;
@@ -32,9 +33,13 @@ pub mod udp;
 pub mod unix;
 #[cfg(feature = "vsock")]
 pub mod vsock;
+#[cfg(feature = "netlink")]
+pub mod netlink;
+
 mod wrapper;
 
 use alloc::{borrow::ToOwned, boxed::Box};
+use core::sync::atomic::{AtomicU32, Ordering};
 
 use axdriver::{AxDeviceContainer, prelude::*};
 use axsync::Mutex;
@@ -56,6 +61,8 @@ static SOCKET_SET: Lazy<SocketSetWrapper> = Lazy::new(SocketSetWrapper::new);
 
 static SERVICE: Once<Mutex<Service>> = Once::new();
 
+static DEVICE_INDEX_COUNTER: AtomicU32 = AtomicU32::new(1);
+
 fn get_service() -> axsync::MutexGuard<'static, Service> {
     SERVICE
         .get()
@@ -68,7 +75,8 @@ pub fn init_network(mut net_devs: AxDeviceContainer<AxNetDevice>) {
     info!("Initialize network subsystem...");
 
     let mut router = Router::new();
-    let lo_dev = router.add_device(Box::new(LoopbackDevice::new()));
+    let index = DEVICE_INDEX_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let lo_dev = router.add_device(Box::new(LoopbackDevice::new(index)));
 
     let lo_ip = Ipv4Cidr::new(Ipv4Address::new(127, 0, 0, 1), 8);
     router.add_rule(Rule::new(
@@ -85,6 +93,7 @@ pub fn init_network(mut net_devs: AxDeviceContainer<AxNetDevice>) {
         let eth0_ip = Ipv4Cidr::new(IP.parse().expect("Invalid IPv4 address"), IP_PREFIX);
 
         let eth0_dev = router.add_device(Box::new(EthernetDevice::new(
+            DEVICE_INDEX_COUNTER.fetch_add(1, Ordering::Relaxed),
             "eth0".to_owned(),
             dev,
             eth0_ip,

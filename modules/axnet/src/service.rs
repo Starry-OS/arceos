@@ -12,7 +12,7 @@ use smoltcp::{
     wire::{HardwareAddress, IpAddress, IpListenEndpoint},
 };
 
-use crate::{SOCKET_SET, router::Router};
+use crate::{SOCKET_SET, device::Device, router::Router};
 
 fn now() -> Instant {
     Instant::from_micros_const((wall_time_nanos() / NANOS_PER_MICROS) as i64)
@@ -59,6 +59,11 @@ impl Service {
                 .map_or(0, |it| 1u32 << it.dev),
             None => u32::MAX,
         }
+    }
+
+    /// Iterate over all devices.
+    pub fn iter_devices(&self) -> impl Iterator<Item = &Box<dyn Device>> {
+        self.router.devices.iter()
     }
 
     pub fn register_waker(&mut self, mask: u32, waker: &Waker) {

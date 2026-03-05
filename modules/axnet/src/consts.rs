@@ -21,3 +21,5 @@ pub const LISTEN_QUEUE_SIZE: usize = 512;
 
 pub const SOCKET_BUFFER_SIZE: usize = 64;
 pub const ETHERNET_MAX_PENDING_PACKETS: usize = 32;
+
+pub const NETLINK_DEFAULT_BUF_SIZE: usize = 65536;
