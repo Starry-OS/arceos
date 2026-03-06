@@ -12,10 +12,12 @@ default = []
 use-ramdisk = []           # TODO: init ramdisk
 fat = ["dep:fatfs"]
 ext4 = ["dep:lwext4_rust"]
+rsext4 = ["dep:rsext4"]
 times = []
 std = ["lwext4_rust?/std"]
 
 [dependencies]
+rsext4 = { git = "https://github.com/Dirinkbottle/rsext4.git", optional = true }
 axalloc = { workspace = true }
 axdriver = { workspace = true, features = ["block"] }
 axerrno = { workspace = true }
