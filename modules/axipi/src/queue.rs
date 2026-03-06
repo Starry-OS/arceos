@@ -1,4 +1,5 @@
-use alloc::collections::VecDeque;
+use alloc::{collections::VecDeque, sync::Arc};
+use core::sync::atomic::AtomicBool;
 
 use crate::event::{Callback, IpiEvent};
 
@@ -26,10 +27,18 @@ impl IpiEventQueue {
     }
 
     /// Push a new event into the queue.
-    pub fn push(&mut self, src_cpu_id: usize, callback: Callback) {
+    pub fn push(
+        &mut self,
+        name: &'static str,
+        src_cpu_id: usize,
+        callback: Callback,
+        done: Option<Arc<AtomicBool>>,
+    ) {
         self.events.push_back(IpiEvent {
+            name,
             src_cpu_id,
             callback,
+            done,
         });
     }
 
@@ -37,9 +46,9 @@ impl IpiEventQueue {
     ///
     /// Return `None` if no event is available.
     #[must_use]
-    pub fn pop_one(&mut self) -> Option<(usize, Callback)> {
+    pub fn pop_one(&mut self) -> Option<(&'static str, usize, Callback, Option<Arc<AtomicBool>>)> {
         if let Some(e) = self.events.pop_front() {
-            Some((e.src_cpu_id, e.callback))
+            Some((e.name, e.src_cpu_id, e.callback, e.done))
         } else {
             None
         }

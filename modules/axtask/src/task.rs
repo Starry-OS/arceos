@@ -52,6 +52,9 @@ pub trait TaskExt {
     fn on_enter(&self) {}
     /// Called when the task is switched out.
     fn on_leave(&self) {}
+    fn on_cpu_mask(&self) -> AxCpuMask {
+        AxCpuMask::new()
+    }
 }
 
 /// The inner task structure.

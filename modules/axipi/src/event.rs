@@ -1,4 +1,5 @@
 use alloc::{boxed::Box, sync::Arc};
+use core::sync::atomic::AtomicBool;
 
 /// A callback function that will be called when an [`IpiEvent`] is received and handled.
 pub struct Callback(Box<dyn FnOnce()>);
@@ -50,8 +51,10 @@ impl<T: Fn() + 'static> From<T> for MulticastCallback {
 
 /// An IPI event that is sent from a source CPU to the target CPU.
 pub struct IpiEvent {
+    pub name: &'static str,
     /// The source CPU ID that sent the IPI event.
     pub src_cpu_id: usize,
     /// The callback function that will be called when the IPI event is handled.
     pub callback: Callback,
+    pub done: Option<Arc<AtomicBool>>,
 }
