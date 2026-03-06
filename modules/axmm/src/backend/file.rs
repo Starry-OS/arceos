@@ -181,7 +181,7 @@ impl BackendOps for FileBackend {
                     } else {
                         flags - MappingFlags::WRITE
                     };
-                    self.0.cache.with_page_or_insert(pn, |page, evicted| {
+                    self.0.cache.with_page_or_insert(pn, PAGE_SIZE_4K, |page, evicted| {
                         if let Some((pn, _)) = evicted {
                             to_be_evicted.push(pn);
                         }
