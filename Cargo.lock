@@ -670,7 +670,7 @@ dependencies = [
  "kspin",
  "log",
  "lru",
- "lwext4_rust",
+ "rsext4",
  "scope-local",
  "slab",
  "spin 0.10.0",
@@ -2280,9 +2280,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.182"
+version = "0.2.183"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6800badb6cb2082ffd7b6a67e6125bb39f18782f793520caee8cb8846be06112"
+checksum = "b5b646652bf6661599e1da8901b3b9522896f01e736bad5f723fe7a3a27f899d"
 
 [[package]]
 name = "libloading"
@@ -2358,16 +2358,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1dc47f592c06f33f8e3aea9591776ec7c9f9e4124778ff8a3c3b87159f7e593"
 dependencies = [
  "hashbrown",
-]
-
-[[package]]
-name = "lwext4_rust"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8518a02caf4803c6135450571d6af9bdb382880e5617adbd88c0e0eba237cbb"
-dependencies = [
- "bindgen",
- "log",
 ]
 
 [[package]]

@@ -1,36 +1,40 @@
-use axerrno::LinuxError;
 use axfs_ng_vfs::{NodeType, VfsError};
-use lwext4_rust::{Ext4Error, InodeType, SystemHal};
+use rsext4::{RSEXT4Error, disknode::Ext4Inode, error::BlockDevError};
 
-use super::Ext4Disk;
-
-pub struct AxHal;
-impl SystemHal for AxHal {
-    fn now() -> Option<core::time::Duration> {
-        if cfg!(feature = "times") {
-            Some(axhal::time::wall_time())
-        } else {
-            None
-        }
+pub fn into_vfs_err(err: BlockDevError) -> VfsError {
+    use BlockDevError::*;
+    match err {
+        InvalidInput | BufferTooSmall { .. } | AlignmentError { .. } => VfsError::InvalidInput,
+        BlockOutOfRange { .. } | InvalidBlockSize { .. } => VfsError::InvalidData,
+        DeviceNotOpen | DeviceClosed | DeviceBusy | Timeout => VfsError::Io,
+        ReadOnly => VfsError::PermissionDenied,
+        NoSpace => VfsError::StorageFull,
+        Unsupported => VfsError::Unsupported,
+        PermissionDenied => VfsError::PermissionDenied,
+        Corrupted | ChecksumError => VfsError::InvalidData,
+        ReadError | WriteError | IoError | Unknown => VfsError::Io,
     }
 }
 
-pub type LwExt4Filesystem = lwext4_rust::Ext4Filesystem<AxHal, Ext4Disk>;
-
-pub fn into_vfs_err(err: Ext4Error) -> VfsError {
-    let linux_error = LinuxError::try_from(err.code).unwrap_or(LinuxError::EIO);
-    VfsError::from(linux_error).canonicalize()
+pub fn into_vfs_fs_err(err: RSEXT4Error) -> VfsError {
+    use RSEXT4Error::*;
+    match err {
+        IoError => VfsError::Io,
+        InvalidMagic | InvalidSuperblock => VfsError::InvalidData,
+        FilesystemHasErrors => VfsError::InvalidData,
+        UnsupportedFeature => VfsError::Unsupported,
+        AlreadyMounted => VfsError::AlreadyExists,
+    }
 }
 
-pub fn into_vfs_type(ty: InodeType) -> NodeType {
-    match ty {
-        InodeType::RegularFile => NodeType::RegularFile,
-        InodeType::Directory => NodeType::Directory,
-        InodeType::CharacterDevice => NodeType::CharacterDevice,
-        InodeType::BlockDevice => NodeType::BlockDevice,
-        InodeType::Fifo => NodeType::Fifo,
-        InodeType::Socket => NodeType::Socket,
-        InodeType::Symlink => NodeType::Symlink,
-        InodeType::Unknown => NodeType::Unknown,
+pub fn into_vfs_type(inode: &Ext4Inode) -> NodeType {
+    if inode.is_dir() {
+        NodeType::Directory
+    } else if inode.is_symlink() {
+        NodeType::Symlink
+    } else if inode.is_file() {
+        NodeType::RegularFile
+    } else {
+        NodeType::Unknown
     }
 }

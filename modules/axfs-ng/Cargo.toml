@@ -9,9 +9,8 @@ homepage.workspace = true
 
 [features]
 fat = ["dep:fatfs"]
-ext4 = ["dep:lwext4_rust"]
+ext4 = ["dep:rsext4"]
 times = []
-std = ["lwext4_rust?/std"]
 
 [dependencies]
 axalloc = { workspace = true }
@@ -33,8 +32,8 @@ scope-local = { workspace = true }
 slab = { version = "0.4", default-features = false }
 spin = { workspace = true }
 
-[dependencies.lwext4_rust]
-version = "0.2"
+[dependencies.rsext4]
+version = "0.1.0-pre.0"
 default-features = false
 optional = true
 

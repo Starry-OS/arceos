@@ -1,48 +1,137 @@
-use alloc::sync::Arc;
+use alloc::{sync::Arc, vec};
 use core::cell::OnceCell;
 
-use axdriver::AxBlockDevice;
+use axdriver::{AxBlockDevice, prelude::BlockDriverOps};
 use axfs_ng_vfs::{
     DirEntry, DirNode, Filesystem, FilesystemOps, Reference, StatFs, VfsResult, path::MAX_NAME_LEN,
 };
 use kspin::{SpinNoPreempt as Mutex, SpinNoPreemptGuard as MutexGuard};
-use lwext4_rust::{FsConfig, ffi::EXT4_ROOT_INO};
-
-use super::{
-    Ext4Disk, Inode,
-    util::{LwExt4Filesystem, into_vfs_err},
+use rsext4::{
+    BlockDevice as RsBlockDevice, Ext4FileSystem, Jbd2Dev,
+    error::{BlockDevError, BlockDevResult},
 };
 
-const EXT4_CONFIG: FsConfig = FsConfig { bcache_size: 256 };
+use super::{
+    inode::Rsext4Node,
+    util::{into_vfs_err, into_vfs_fs_err},
+};
+
+const EXT4_ROOT_INO: u32 = 2;
+
+pub struct Ext4Disk(pub AxBlockDevice);
+
+impl RsBlockDevice for Ext4Disk {
+    fn write(&mut self, buffer: &[u8], block_id: u32, count: u32) -> BlockDevResult<()> {
+        let dev_bs = self.0.block_size();
+        let fs_bs = rsext4::BLOCK_SIZE;
+        if fs_bs % dev_bs != 0 {
+            return Err(BlockDevError::InvalidBlockSize {
+                size: dev_bs,
+                expected: fs_bs,
+            });
+        }
+        let ratio = (fs_bs / dev_bs) as u64;
+        let total_bytes = (count as usize).saturating_mul(fs_bs).min(buffer.len());
+
+        for (i, fs_block) in buffer[..total_bytes].chunks(fs_bs).enumerate() {
+            for (j, dev_chunk) in fs_block.chunks(dev_bs).enumerate() {
+                let mut blk = vec![0u8; dev_bs];
+                blk[..dev_chunk.len()].copy_from_slice(dev_chunk);
+                let dev_block_id = (block_id as u64 + i as u64) * ratio + j as u64;
+                self.0
+                    .write_block(dev_block_id, &blk)
+                    .map_err(|_| BlockDevError::WriteError)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn read(&mut self, buffer: &mut [u8], block_id: u32, count: u32) -> BlockDevResult<()> {
+        let dev_bs = self.0.block_size();
+        let fs_bs = rsext4::BLOCK_SIZE;
+        if fs_bs % dev_bs != 0 {
+            return Err(BlockDevError::InvalidBlockSize {
+                size: dev_bs,
+                expected: fs_bs,
+            });
+        }
+        let ratio = (fs_bs / dev_bs) as u64;
+        let total_bytes = (count as usize).saturating_mul(fs_bs).min(buffer.len());
+
+        for (i, fs_block) in buffer[..total_bytes].chunks_mut(fs_bs).enumerate() {
+            for (j, dev_chunk) in fs_block.chunks_mut(dev_bs).enumerate() {
+                let mut blk = vec![0u8; dev_bs];
+                let dev_block_id = (block_id as u64 + i as u64) * ratio + j as u64;
+                self.0
+                    .read_block(dev_block_id, &mut blk)
+                    .map_err(|_| BlockDevError::ReadError)?;
+                dev_chunk.copy_from_slice(&blk[..dev_chunk.len()]);
+            }
+        }
+        Ok(())
+    }
+
+    fn open(&mut self) -> BlockDevResult<()> {
+        Ok(())
+    }
+
+    fn close(&mut self) -> BlockDevResult<()> {
+        Ok(())
+    }
+
+    fn total_blocks(&self) -> u64 {
+        let dev_bs = self.0.block_size();
+        let fs_bs = rsext4::BLOCK_SIZE;
+        if fs_bs % dev_bs != 0 {
+            return 0;
+        }
+        let ratio = (fs_bs / dev_bs) as u64;
+        self.0.num_blocks() / ratio
+    }
+
+    fn block_size(&self) -> u32 {
+        rsext4::BLOCK_SIZE as u32
+    }
+
+    fn flush(&mut self) -> BlockDevResult<()> {
+        self.0.flush().map_err(|_| BlockDevError::WriteError)
+    }
+}
+
+pub struct Ext4FilesystemInner {
+    pub fs: Ext4FileSystem,
+    pub dev: Jbd2Dev<Ext4Disk>,
+}
 
 pub struct Ext4Filesystem {
-    inner: Mutex<LwExt4Filesystem>,
+    inner: Mutex<Ext4FilesystemInner>,
     root_dir: OnceCell<DirEntry>,
 }
 
 impl Ext4Filesystem {
     pub fn new(dev: AxBlockDevice) -> VfsResult<Filesystem> {
-        let ext4 =
-            lwext4_rust::Ext4Filesystem::new(Ext4Disk(dev), EXT4_CONFIG).map_err(into_vfs_err)?;
+        let mut jbd = Jbd2Dev::initial_jbd2dev(0, Ext4Disk(dev), true);
+        let fs = Ext4FileSystem::mount(&mut jbd).map_err(into_vfs_fs_err)?;
 
         let fs = Arc::new(Self {
-            inner: Mutex::new(ext4),
+            inner: Mutex::new(Ext4FilesystemInner { fs, dev: jbd }),
             root_dir: OnceCell::new(),
         });
+
         let _ = fs.root_dir.set(DirEntry::new_dir(
-            |this| DirNode::new(Inode::new(fs.clone(), EXT4_ROOT_INO, Some(this))),
+            |this| DirNode::new(Rsext4Node::new(fs.clone(), "/", EXT4_ROOT_INO, Some(this))),
             Reference::root(),
         ));
+
         Ok(Filesystem::new(fs))
     }
 
-    pub(crate) fn lock(&self) -> MutexGuard<'_, LwExt4Filesystem> {
+    pub(crate) fn lock<'a>(&'a self) -> MutexGuard<'a, Ext4FilesystemInner> {
         self.inner.lock()
     }
 }
 
 unsafe impl Send for Ext4Filesystem {}
-
 unsafe impl Sync for Ext4Filesystem {}
 
 impl FilesystemOps for Ext4Filesystem {
@@ -55,18 +144,16 @@ impl FilesystemOps for Ext4Filesystem {
     }
 
     fn stat(&self) -> VfsResult<StatFs> {
-        let mut fs = self.lock();
-        let stat = fs.stat().map_err(into_vfs_err)?;
+        let inner = self.lock();
+        let sb = &inner.fs.superblock;
         Ok(StatFs {
             fs_type: 0xef53,
-            block_size: stat.block_size as _,
-            blocks: stat.blocks_count,
-            blocks_free: stat.free_blocks_count,
-            blocks_available: stat.free_blocks_count,
-
-            file_count: stat.inodes_count as _,
-            free_file_count: stat.free_inodes_count as _,
-
+            block_size: rsext4::BLOCK_SIZE as _,
+            blocks: sb.blocks_count() as _,
+            blocks_free: sb.free_blocks_count() as _,
+            blocks_available: sb.free_blocks_count() as _,
+            file_count: sb.s_inodes_count as _,
+            free_file_count: sb.s_free_inodes_count as _,
             name_length: MAX_NAME_LEN as _,
             fragment_size: 0,
             mount_flags: 0,
@@ -74,6 +161,21 @@ impl FilesystemOps for Ext4Filesystem {
     }
 
     fn flush(&self) -> VfsResult<()> {
-        self.inner.lock().flush().map_err(into_vfs_err)
+        let fs = &mut self.lock().fs;
+        let block_dev = &mut self.lock().dev;
+
+        fs.bitmap_cache.flush_all(block_dev).map_err(into_vfs_err)?;
+        fs.inodetable_cahce
+            .flush_all(block_dev)
+            .map_err(into_vfs_err)?;
+        fs.datablock_cache
+            .flush_all(block_dev)
+            .map_err(into_vfs_err)?;
+
+        // 4. Update superblock
+        fs.sync_superblock(block_dev).map_err(into_vfs_err)?;
+
+        // Write back group descriptors
+        fs.sync_group_descriptors(block_dev).map_err(into_vfs_err)
     }
 }
